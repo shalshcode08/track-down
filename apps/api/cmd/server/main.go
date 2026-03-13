@@ -52,7 +52,10 @@ func main() {
 		log.Fatal("TELEGRAM_BOT_TOKEN is required")
 	}
 
-	bot.Start(queries, botToken)
+	if err := bot.Start(queries, botToken); err != nil {
+		log.Printf("WARNING: Telegram bot failed to start: %v", err)
+		log.Println("HTTP server will still run, but bot features are unavailable.")
+	}
 
 	mux := http.NewServeMux()
 	handlers.Setup(mux, queries, botToken)

@@ -59,7 +59,7 @@ func RedeemLoginCode(code string) int64 {
 	return entry.UserID
 }
 
-func Start(queries *db.Queries, token string) {
+func Start(queries *db.Queries, token string) error {
 	Queries = queries
 
 	pref := telebot.Settings{
@@ -70,7 +70,7 @@ func Start(queries *db.Queries, token string) {
 	var err error
 	Bot, err = telebot.NewBot(pref)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	Bot.Handle(telebot.OnText, handleText)
@@ -84,6 +84,8 @@ func Start(queries *db.Queries, token string) {
 	go func() {
 		Bot.Start()
 	}()
+
+	return nil
 }
 
 func handleText(c telebot.Context) error {
