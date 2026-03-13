@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { format, isToday, isYesterday, startOfWeek, startOfMonth, subDays } from 'date-fns'
 import {
   Wallet, Plus, Trash2, TrendingUp, Calendar, Settings,
@@ -487,39 +487,40 @@ function App() {
 const BOT_USERNAME = import.meta.env.VITE_BOT_USERNAME || ''
 
 function LoginPage({ onAuth }: { onAuth: (data: unknown) => void }) {
-  const widgetRef = useRef<HTMLDivElement>(null)
+  const [code, setCode]       = useState('')
+  const [error, setError]     = useState('')
+  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    if (!BOT_USERNAME || BOT_USERNAME === 'YOUR_BOT_USERNAME') return
-    if (!widgetRef.current) return
-
-    // Expose callback for the widget
-    ;(window as any).onTelegramAuth = (user: unknown) => onAuth(user)
-
-    const script = document.createElement('script')
-    script.src = 'https://telegram.org/js/telegram-widget.js?21'
-    script.async = true
-    script.setAttribute('data-telegram-login', BOT_USERNAME)
-    script.setAttribute('data-size', 'large')
-    script.setAttribute('data-onauth', 'onTelegramAuth(user)')
-    script.setAttribute('data-request-access', 'write')
-
-    widgetRef.current.innerHTML = ''
-    widgetRef.current.appendChild(script)
-
-    return () => { delete (window as any).onTelegramAuth }
-  }, [onAuth])
-
-  const notConfigured = !BOT_USERNAME || BOT_USERNAME === 'YOUR_BOT_USERNAME'
+  const submit = async () => {
+    const trimmed = code.trim()
+    if (trimmed.length !== 6) { setError('Enter the 6-digit code from Telegram.'); return }
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_URL}/api/auth/code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: trimmed }),
+        credentials: 'include',
+      })
+      if (res.ok) {
+        onAuth(await res.json())
+      } else {
+        setError('Invalid or expired code. Send /login to the bot again.')
+      }
+    } catch {
+      setError('Could not reach the server.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center p-4 relative overflow-hidden"
       style={{ fontFamily: "'Outfit', sans-serif" }}>
       <style>{FONT_IMPORT}</style>
 
-      {/* ambient glows */}
       <div className="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="fixed bottom-0 left-1/4 w-64 h-64 bg-indigo-600/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-[340px] relative z-10">
         {/* Logo */}
@@ -532,12 +533,14 @@ function LoginPage({ onAuth }: { onAuth: (data: unknown) => void }) {
         </div>
 
         {/* Card */}
-        <div className="bg-[#0d0d1a] border border-white/[0.08] rounded-2xl p-6 shadow-xl">
-          <div className="space-y-3 mb-6">
+        <div className="bg-[#0d0d1a] border border-white/[0.08] rounded-2xl p-6 shadow-xl space-y-5">
+
+          {/* Steps */}
+          <div className="space-y-3">
             {[
-              'Sign in with your Telegram account',
-              'Set up your expense categories',
-              'Send amounts to your bot — tap to categorise',
+              <>Open <span className="text-blue-400 font-mono">@{BOT_USERNAME || 'your_bot'}</span> on Telegram</>,
+              <>Send <span className="text-blue-400 font-mono">/login</span> to the bot</>,
+              'Paste the 6-digit code below',
             ].map((text, i) => (
               <div key={i} className="flex items-start gap-3">
                 <div className="w-5 h-5 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -548,18 +551,32 @@ function LoginPage({ onAuth }: { onAuth: (data: unknown) => void }) {
             ))}
           </div>
 
-          {/* Telegram widget — injected via useEffect */}
-          {notConfigured ? (
-            <div className="border border-amber-500/20 bg-amber-500/5 rounded-xl p-3 text-center">
-              <p className="text-xs text-amber-400/80 font-mono">Set VITE_BOT_USERNAME in</p>
-              <p className="text-xs text-amber-400/60 font-mono">apps/web/.env</p>
-            </div>
-          ) : (
-            <div ref={widgetRef} className="flex justify-center py-1 min-h-[48px]" />
-          )}
+          {/* Code input */}
+          <div className="space-y-2">
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={code}
+              onChange={e => { setCode(e.target.value.replace(/\D/g, '')); setError('') }}
+              onKeyDown={e => e.key === 'Enter' && submit()}
+              placeholder="_ _ _ _ _ _"
+              className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-blue-500/40 rounded-xl px-4 py-3 text-center text-2xl font-mono tracking-[0.4em] outline-none placeholder-white/10 text-gray-200 transition-colors"
+              autoFocus
+            />
+            {error && <p className="text-xs text-red-400/80 text-center font-mono">{error}</p>}
+          </div>
 
-          <p className="text-[10px] font-mono text-white/15 text-center mt-4">
-            your data is never shared with third parties.
+          <button
+            onClick={submit}
+            disabled={loading || code.length !== 6}
+            className="w-full py-2.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/25 text-sm font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Verifying…' : 'Log in'}
+          </button>
+
+          <p className="text-[10px] font-mono text-white/15 text-center">
+            code expires in 5 minutes · your data is never shared
           </p>
         </div>
       </div>

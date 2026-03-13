@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"track-down-api/bot"
 	"track-down-api/internal/db"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -32,6 +33,7 @@ func Setup(mux *http.ServeMux, q *db.Queries, token string) {
 	jwtSecret = []byte(botToken) // Re-using bot token for JWT secret for simplicity
 
 	mux.HandleFunc("/api/auth/telegram", handleTelegramAuth)
+	mux.HandleFunc("/api/auth/code", handleCodeAuth)
 	mux.Handle("/api/me", authMiddleware(http.HandlerFunc(handleMe)))
 	mux.Handle("/api/categories", authMiddleware(http.HandlerFunc(handleCategories)))
 	mux.Handle("/api/expenses", authMiddleware(http.HandlerFunc(handleExpenses)))
@@ -72,6 +74,58 @@ func authMiddleware(next http.Handler) http.Handler {
 
 		ctx := context.WithValue(r.Context(), "userID", claims.UserID)
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func handleCodeAuth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Code == "" {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	telegramID := bot.RedeemLoginCode(body.Code)
+	if telegramID == 0 {
+		http.Error(w, "Invalid or expired code", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := queries.GetUserByTelegramID(r.Context(), telegramID)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	expirationTime := time.Now().Add(24 * time.Hour)
+	claims := &Claims{
+		UserID: user.ID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(jwtSecret)
+	if err != nil {
+		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:    "token",
+		Value:   tokenString,
+		Expires: expirationTime,
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"id":   user.ID,
+		"name": user.Name,
 	})
 }
 

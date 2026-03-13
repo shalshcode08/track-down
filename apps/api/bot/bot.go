@@ -2,11 +2,14 @@ package bot
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"log"
 	"math"
+	"math/big"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"track-down-api/internal/db"
@@ -18,6 +21,43 @@ var (
 	Bot     *telebot.Bot
 	Queries *db.Queries
 )
+
+// LoginCode stores a temporary login code mapped to a telegram user ID
+type LoginCode struct {
+	UserID    int64
+	ExpiresAt time.Time
+}
+
+var (
+	loginCodes   = map[string]LoginCode{}
+	loginCodesMu sync.Mutex
+)
+
+// GenerateLoginCode creates a 6-digit code for the given telegram user and stores it
+func GenerateLoginCode(telegramID int64) string {
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	code := fmt.Sprintf("%06d", n.Int64()+100000)
+
+	loginCodesMu.Lock()
+	loginCodes[code] = LoginCode{UserID: telegramID, ExpiresAt: time.Now().Add(5 * time.Minute)}
+	loginCodesMu.Unlock()
+
+	return code
+}
+
+// RedeemLoginCode validates a code and returns the telegram user ID, or 0 if invalid/expired
+func RedeemLoginCode(code string) int64 {
+	loginCodesMu.Lock()
+	defer loginCodesMu.Unlock()
+
+	entry, ok := loginCodes[code]
+	if !ok || time.Now().After(entry.ExpiresAt) {
+		delete(loginCodes, code)
+		return 0
+	}
+	delete(loginCodes, code)
+	return entry.UserID
+}
 
 func Start(queries *db.Queries, token string) {
 	Queries = queries
@@ -36,6 +76,7 @@ func Start(queries *db.Queries, token string) {
 	Bot.Handle(telebot.OnText, handleText)
 	Bot.Handle(telebot.OnCallback, handleCallback)
 	Bot.Handle("/start", handleStart)
+	Bot.Handle("/login", handleLogin)
 	Bot.Handle("/today", handleToday)
 	Bot.Handle("/month", handleMonth)
 	Bot.Handle("/help", handleHelp)
@@ -152,6 +193,15 @@ func ensureUser(sender *telebot.User) db.User {
 	return newUser
 }
 
+func handleLogin(c telebot.Context) error {
+	user := ensureUser(c.Sender())
+	if user.ID == 0 {
+		return c.Send("Could not create an account for you. Please try again.")
+	}
+	code := GenerateLoginCode(c.Sender().ID)
+	return c.Send(fmt.Sprintf("🔐 Your login code: `%s`\n\nEnter this on the website. It expires in 5 minutes.", code), &telebot.SendOptions{ParseMode: "Markdown"})
+}
+
 func handleStart(c telebot.Context) error {
 	user := ensureUser(c.Sender())
 	if user.ID == 0 {
@@ -202,6 +252,7 @@ func handleHelp(c telebot.Context) error {
 📖 *Help*
 
 • *Log Expense*: Just send a number (e.g., ` + "`15.99`" + ` or ` + "`7`" + `).
+• */login*: Get a one-time code to log in to the web dashboard.
 • */today*: See your total spending for today.
 • */month*: See your total spending for the current month.
 • *Configuration*: Visit the web dashboard to add/edit expense categories.
