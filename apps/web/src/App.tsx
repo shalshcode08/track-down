@@ -85,15 +85,6 @@ function App() {
     } catch { /**/ }
   }
 
-  const handleTelegramAuth = async (userData: unknown) => {
-    try {
-      const res = await fetch(`${API_URL}/api/auth/telegram`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData), credentials: 'include',
-      })
-      if (res.ok) setUser(await res.json())
-    } catch { /**/ }
-  }
 
   const applyPreset = (preset: string) => {
     const today = new Date()
@@ -162,7 +153,7 @@ function App() {
     </div>
   )
 
-  if (!user) return <LoginPage onAuth={handleTelegramAuth} />
+  if (!user) return <LoginPage onAuth={(data: any) => setUser(data)} />
 
   // ── dashboard ─────────────────────────────────────────────────────────────
   return (
