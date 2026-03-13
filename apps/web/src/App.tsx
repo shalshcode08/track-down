@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { format, isToday, isYesterday, startOfWeek, startOfMonth, subDays } from 'date-fns'
 import {
   Wallet, Plus, Trash2, TrendingUp, Calendar, Settings,
-  Loader2, X, BarChart3,
+  X, BarChart3,
 } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
