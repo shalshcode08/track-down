@@ -233,6 +233,9 @@ func handleCategories(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Failed to get categories", http.StatusInternalServerError)
 			return
 		}
+		if categories == nil {
+			categories = []db.Category{}
+		}
 		json.NewEncoder(w).Encode(categories)
 	case "POST":
 		var params db.CreateCategoryParams
@@ -288,6 +291,9 @@ func handleExpenses(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, "Failed to get expenses", http.StatusInternalServerError)
 			return
+		}
+		if expenses == nil {
+			expenses = []db.GetExpensesForUserByDateRangeRow{}
 		}
 		json.NewEncoder(w).Encode(expenses)
 	} else {
