@@ -2,7 +2,7 @@
   "name": "track-down",
   "private": true,
   "workspaces": [
-    "apps/*"
+    "apps/web"
   ],
   "scripts": {
     "build": "turbo run build",

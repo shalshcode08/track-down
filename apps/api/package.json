@@ -1,9 +1,0 @@
-{
-  "name": "api",
-  "version": "1.0.0",
-  "scripts": {
-    "dev": "go run cmd/server/main.go",
-    "build": "go build -o bin/server cmd/server/main.go",
-    "generate": "sqlc generate"
-  }
-}
