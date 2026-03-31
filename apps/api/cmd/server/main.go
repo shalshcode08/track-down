@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 	"track-down-api/bot"
@@ -58,7 +59,6 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	handlers.Setup(mux, queries, botToken)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -69,6 +69,9 @@ func main() {
 	if allowedOrigin == "" {
 		allowedOrigin = "http://localhost:5173"
 	}
+
+	secure := strings.HasPrefix(allowedOrigin, "https://")
+	handlers.Setup(mux, queries, botToken, secure)
 
 	server := &http.Server{
 		Addr:    ":" + port,

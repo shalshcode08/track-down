@@ -106,7 +106,12 @@ func handleText(c telebot.Context) error {
 
 	categories, err := Queries.ListCategoriesForUser(context.Background(), user.ID)
 	if err != nil || len(categories) == 0 {
-		return c.Send("You have no categories! Please visit the web dashboard to create some first.")
+		return c.Send(
+			"⚠️ *No categories found*\n\n"+
+				"You need at least one category before logging expenses.\n\n"+
+				"👉 Head to the web dashboard to create your categories, then come back and try again.",
+			&telebot.SendOptions{ParseMode: "Markdown"},
+		)
 	}
 
 	var rows [][]telebot.InlineButton
@@ -125,7 +130,7 @@ func handleText(c telebot.Context) error {
 		InlineKeyboard: rows,
 	}
 
-	return c.Send(fmt.Sprintf("💰 $%.2f - What was this for?", amount), markup)
+	return c.Send(fmt.Sprintf("💸 *$%.2f* — which category?", amount), markup, &telebot.SendOptions{ParseMode: "Markdown"})
 }
 
 func handleCallback(c telebot.Context) error {
@@ -168,12 +173,13 @@ func handleCallback(c telebot.Context) error {
 		return c.Respond(&telebot.CallbackResponse{Text: "Error finding category.", ShowAlert: true})
 	}
 
-	_, err = Bot.Edit(callback.Message, fmt.Sprintf("✅ Logged $%.2f under %s %s", amount, cat.Emoji, cat.Name))
+	edited := fmt.Sprintf("✅ *$%.2f* logged under %s %s", amount, cat.Emoji, cat.Name)
+	_, err = Bot.Edit(callback.Message, edited, &telebot.SendOptions{ParseMode: "Markdown"})
 	if err != nil {
 		log.Printf("Failed to edit message: %v", err)
 	}
 
-	return c.Respond(&telebot.CallbackResponse{Text: "Expense logged!"})
+	return c.Respond(&telebot.CallbackResponse{Text: fmt.Sprintf("$%.2f saved to %s %s", amount, cat.Emoji, cat.Name)})
 }
 
 func ensureUser(sender *telebot.User) db.User {
@@ -198,33 +204,57 @@ func ensureUser(sender *telebot.User) db.User {
 func handleLogin(c telebot.Context) error {
 	user := ensureUser(c.Sender())
 	if user.ID == 0 {
-		return c.Send("Could not create an account for you. Please try again.")
+		return c.Send("❌ Could not create an account for you. Please try again in a moment.")
 	}
 	code := GenerateLoginCode(c.Sender().ID)
-	return c.Send(fmt.Sprintf("🔐 Your login code: `%s`\n\nEnter this on the website. It expires in 5 minutes.", code), &telebot.SendOptions{ParseMode: "Markdown"})
+	msg := fmt.Sprintf(
+		"🔐 *Your login code*\n\n"+
+			"`%s`\n\n"+
+			"1. Open the TrackDown web dashboard\n"+
+			"2. Paste this 6-digit code to sign in\n\n"+
+			"⏱ Expires in *5 minutes* — do not share it with anyone.",
+		code,
+	)
+	return c.Send(msg, &telebot.SendOptions{ParseMode: "Markdown"})
 }
 
 func handleStart(c telebot.Context) error {
 	user := ensureUser(c.Sender())
 	if user.ID == 0 {
-		return c.Send("Could not create an account for you. Please try again.")
+		return c.Send("❌ Could not create an account for you. Please try again in a moment.")
 	}
-	return c.Send(fmt.Sprintf("Welcome, %s! 👋\n\nTo log an expense, just send me an amount (e.g., `12.50`).", user.Name))
+	msg := fmt.Sprintf(
+		"👋 *Welcome, %s!*\n\n"+
+			"I'm your personal expense tracker. Here's how to get started:\n\n"+
+			"1️⃣ Set up your categories on the web dashboard\n"+
+			"2️⃣ Send me any amount to log an expense — e.g. `12.50` or `7`\n"+
+			"3️⃣ Pick a category and it's saved instantly\n\n"+
+			"*Commands*\n"+
+			"/today — today's spending total\n"+
+			"/month — this month's spending total\n"+
+			"/login — get a code to access the dashboard\n"+
+			"/help — show all commands\n\n"+
+			"Ready? Just send me a number! 💸",
+		user.Name,
+	)
+	return c.Send(msg, &telebot.SendOptions{ParseMode: "Markdown"})
 }
 
 func handleToday(c telebot.Context) error {
 	user := ensureUser(c.Sender())
 	if user.ID == 0 {
-		return c.Send("Could not find your account.")
+		return c.Send("❌ Could not find your account. Please try again.")
 	}
 
 	total, err := Queries.GetTotalExpensesForToday(context.Background(), user.ID)
 	if err != nil {
 		log.Printf("Error getting today's total: %v", err)
-		return c.Send("Could not retrieve today's total.")
+		return c.Send("❌ Could not retrieve today's total. Please try again later.")
 	}
 
-	return c.Send(fmt.Sprintf("📊 Today's total: $%.2f", total.(float64)))
+	today := time.Now().Format("Mon, Jan 2")
+	msg := fmt.Sprintf("📊 *Today's spending* (%s)\n\n*$%.2f*", today, total.(float64))
+	return c.Send(msg, &telebot.SendOptions{ParseMode: "Markdown"})
 }
 
 func handleMonth(c telebot.Context) error {
@@ -246,18 +276,22 @@ func handleMonth(c telebot.Context) error {
 		return c.Send("Could not retrieve this month's total.")
 	}
 
-	return c.Send(fmt.Sprintf("🗓️ This month's total: $%.2f", total.(float64)))
+	monthName := now.Format("January 2006")
+	msg := fmt.Sprintf("🗓️ *%s spending*\n\n*$%.2f*", monthName, total.(float64))
+	return c.Send(msg, &telebot.SendOptions{ParseMode: "Markdown"})
 }
 
 func handleHelp(c telebot.Context) error {
-	helpText := `
-📖 *Help*
-
-• *Log Expense*: Just send a number (e.g., ` + "`15.99`" + ` or ` + "`7`" + `).
-• */login*: Get a one-time code to log in to the web dashboard.
-• */today*: See your total spending for today.
-• */month*: See your total spending for the current month.
-• *Configuration*: Visit the web dashboard to add/edit expense categories.
-	`
+	helpText :=
+		"📖 *TrackDown Help*\n\n" +
+			"*Logging an expense*\n" +
+			"Just send any number — `15.99`, `7`, `42` — and I'll ask you which category to save it under.\n\n" +
+			"*Commands*\n" +
+			"/today — your total spending for today\n" +
+			"/month — your total spending for the current month\n" +
+			"/login — get a one-time code to sign in to the web dashboard\n" +
+			"/help — show this message\n\n" +
+			"*Managing categories*\n" +
+			"Categories are managed from the web dashboard. Go there to add, rename, or delete them."
 	return c.Send(helpText, &telebot.SendOptions{ParseMode: "Markdown"})
 }
