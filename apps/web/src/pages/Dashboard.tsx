@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { format, startOfWeek, startOfMonth, subDays } from 'date-fns'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trash2, Plus } from 'lucide-react'
+import { Trash2, Plus, Download } from 'lucide-react'
 import {
   Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid,
   PieChart, Pie, Cell
@@ -49,6 +49,25 @@ function getPeriodDays(preset: string): number {
     case 'Last 30 Days': return 30
     default: return now.getDate()
   }
+}
+
+function exportCSV(expenses: ReturnType<typeof Array.prototype.slice>, preset: string) {
+  const header = 'Date,Time,Category,Emoji,Amount,Note'
+  const rows = expenses.map((e: { created_at: string; category_name: string; category_emoji: string; amount: number; note: string | null }) => {
+    const d = new Date(e.created_at)
+    const date = format(d, 'yyyy-MM-dd')
+    const time = format(d, 'HH:mm:ss')
+    const note = e.note ? `"${e.note.replace(/"/g, '""')}"` : ''
+    return `${date},${time},"${e.category_name}",${e.category_emoji},${e.amount.toFixed(2)},${note}`
+  })
+  const csv = [header, ...rows].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `trackdown-${preset.toLowerCase().replace(/ /g, '-')}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 export default function Dashboard() {
@@ -139,6 +158,15 @@ export default function Dashboard() {
               {p}
             </button>
           ))}
+          {expenses.length > 0 && (
+            <Button onClick={() => exportCSV(expenses, preset)} style={{
+              background: 'transparent', color: T.textMid, fontFamily: T.font, fontSize: 12,
+              height: 30, borderRadius: 8, gap: 4, paddingLeft: 10, paddingRight: 12,
+              border: `1px solid ${T.border}`,
+            }}>
+              <Download size={12} /> Export
+            </Button>
+          )}
           <Button onClick={() => setAddOpen(true)} style={{
             background: T.text, color: T.bg, fontFamily: T.font, fontSize: 12,
             height: 30, borderRadius: 8, gap: 4, paddingLeft: 10, paddingRight: 12,

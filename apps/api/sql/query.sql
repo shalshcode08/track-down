@@ -35,6 +35,11 @@ ORDER BY sort_order ASC, id ASC;
 SELECT * FROM categories
 WHERE id = ? LIMIT 1;
 
+-- name: UpdateCategory :exec
+UPDATE categories
+SET name = ?, emoji = ?
+WHERE id = ? AND user_id = ?;
+
 -- name: DeleteCategory :exec
 DELETE FROM categories
 WHERE id = ? AND user_id = ?;

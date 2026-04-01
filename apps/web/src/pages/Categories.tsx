@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Card } from '@/components/ui/card'
@@ -11,10 +11,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 import { T, EMOJI_ROWS } from '@/lib/theme'
 import { api } from '@/lib/api'
+import type { Category } from '@/data/mock'
+
+type ModalMode = 'add' | 'edit'
 
 export default function CategoriesPage() {
   const queryClient = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState<ModalMode>('add')
+  const [editTarget, setEditTarget] = useState<Category | null>(null)
   const [name, setName]   = useState('')
   const [emoji, setEmoji] = useState('💰')
 
@@ -24,11 +29,21 @@ export default function CategoriesPage() {
     mutationFn: api.addCategory,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
-      setName('')
-      setEmoji('💰')
-      setModalOpen(false)
+      closeModal()
       toast.success('Category added')
-    }
+    },
+    onError: () => toast.error('Failed to add category'),
+  })
+
+  const editMut = useMutation({
+    mutationFn: ({ id, cat }: { id: number; cat: { name: string; emoji: string } }) =>
+      api.updateCategory(id, cat),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      closeModal()
+      toast.success('Category updated')
+    },
+    onError: () => toast.error('Failed to update category'),
   })
 
   const delMut = useMutation({
@@ -36,15 +51,43 @@ export default function CategoriesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] })
       toast.success('Category deleted')
-    }
+    },
+    onError: () => toast.error('Failed to delete category'),
   })
 
-  const add = () => {
-    if (!name.trim()) return
-    addMut.mutate({ name: name.trim(), emoji, sort_order: cats.length })
+  function openAdd() {
+    setModalMode('add')
+    setEditTarget(null)
+    setName('')
+    setEmoji('💰')
+    setModalOpen(true)
   }
-  
-  const del = (id: number) => delMut.mutate(id)
+
+  function openEdit(cat: Category) {
+    setModalMode('edit')
+    setEditTarget(cat)
+    setName(cat.name)
+    setEmoji(cat.emoji)
+    setModalOpen(true)
+  }
+
+  function closeModal() {
+    setModalOpen(false)
+    setEditTarget(null)
+    setName('')
+    setEmoji('💰')
+  }
+
+  function submit() {
+    if (!name.trim()) return
+    if (modalMode === 'edit' && editTarget) {
+      editMut.mutate({ id: editTarget.id, cat: { name: name.trim(), emoji } })
+    } else {
+      addMut.mutate({ name: name.trim(), emoji, sort_order: cats.length })
+    }
+  }
+
+  const isPending = addMut.isPending || editMut.isPending
 
   return (
     <div className="max-w-[900px] mx-auto px-4 sm:px-6 py-6 sm:py-9" style={{ fontFamily: T.font }}>
@@ -53,7 +96,7 @@ export default function CategoriesPage() {
           <h1 style={{ fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: '-0.03em' }}>Categories</h1>
           <p style={{ fontSize: 13, color: T.textMid, marginTop: 2 }}>Used by your Telegram bot to log expenses.</p>
         </div>
-        <Button onClick={() => setModalOpen(true)} className="w-full sm:w-auto" style={{
+        <Button onClick={openAdd} className="w-full sm:w-auto" style={{
           background: T.text, color: T.bg, fontFamily: T.font, fontSize: 13, gap: 6, height: 36, borderRadius: 9,
         }}>
           <Plus size={14} /> Add Category
@@ -91,26 +134,37 @@ export default function CategoriesPage() {
                   <p style={{ fontSize: 11, fontFamily: T.fontMono, color: T.textDim }}>#{cat.id}</p>
                 </div>
               </div>
-              <button onClick={() => del(cat.id)} style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: T.textDim, padding: '6px 8px', borderRadius: 8, transition: 'all 0.15s',
-              }}
-                onMouseEnter={e => { e.currentTarget.style.color = T.red; e.currentTarget.style.background = '#450a0a' }}
-                onMouseLeave={e => { e.currentTarget.style.color = T.textDim; e.currentTarget.style.background = 'transparent' }}
-              >
-                <Trash2 size={14} />
-              </button>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button onClick={() => openEdit(cat)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: T.textDim, padding: '6px 8px', borderRadius: 8, transition: 'all 0.15s',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.color = T.text; e.currentTarget.style.background = T.border }}
+                  onMouseLeave={e => { e.currentTarget.style.color = T.textDim; e.currentTarget.style.background = 'transparent' }}
+                >
+                  <Pencil size={14} />
+                </button>
+                <button onClick={() => delMut.mutate(cat.id)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: T.textDim, padding: '6px 8px', borderRadius: 8, transition: 'all 0.15s',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.color = T.red; e.currentTarget.style.background = '#450a0a' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = T.textDim; e.currentTarget.style.background = 'transparent' }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
             {i < cats.length - 1 && <Separator style={{ background: T.border }} />}
           </div>
         ))}
       </Card>
 
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+      <Dialog open={modalOpen} onOpenChange={(open) => !open && closeModal()}>
         <DialogContent style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, maxWidth: 400, fontFamily: T.font }}>
           <DialogHeader style={{ marginBottom: 24 }}>
             <DialogTitle style={{ fontFamily: T.font, fontWeight: 700, fontSize: 18, color: T.text }}>
-              New Category
+              {modalMode === 'edit' ? 'Edit Category' : 'New Category'}
             </DialogTitle>
           </DialogHeader>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -143,18 +197,18 @@ export default function CategoriesPage() {
               </p>
               <Input
                 value={name} onChange={e => setName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && add()}
+                onKeyDown={e => e.key === 'Enter' && submit()}
                 placeholder="Food, Transport, Shopping…"
                 autoFocus
                 style={{ border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, borderRadius: 9, background: T.bg }}
               />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <Button onClick={() => setModalOpen(false)} style={{ flex: 1, background: 'transparent', color: T.textMid, fontFamily: T.font, borderRadius: 9, border: `1px solid ${T.border}` }}>
+              <Button onClick={closeModal} style={{ flex: 1, background: 'transparent', color: T.textMid, fontFamily: T.font, borderRadius: 9, border: `1px solid ${T.border}` }}>
                 Cancel
               </Button>
-              <Button onClick={add} disabled={!name.trim()} style={{ flex: 1, background: T.text, color: T.bg, fontFamily: T.font, borderRadius: 9 }}>
-                Add {emoji}
+              <Button onClick={submit} disabled={!name.trim() || isPending} style={{ flex: 1, background: T.text, color: T.bg, fontFamily: T.font, borderRadius: 9 }}>
+                {isPending ? 'Saving…' : modalMode === 'edit' ? `Save ${emoji}` : `Add ${emoji}`}
               </Button>
             </div>
           </div>

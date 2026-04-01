@@ -113,6 +113,24 @@ func (q *Queries) DeleteExpense(ctx context.Context, arg DeleteExpenseParams) er
 	return err
 }
 
+const updateCategory = `-- name: UpdateCategory :exec
+UPDATE categories
+SET name = ?, emoji = ?
+WHERE id = ? AND user_id = ?
+`
+
+type UpdateCategoryParams struct {
+	Name   string
+	Emoji  string
+	ID     int64
+	UserID int64
+}
+
+func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) error {
+	_, err := q.db.ExecContext(ctx, updateCategory, arg.Name, arg.Emoji, arg.ID, arg.UserID)
+	return err
+}
+
 const deleteCategory = `-- name: DeleteCategory :exec
 DELETE FROM categories
 WHERE id = ? AND user_id = ?

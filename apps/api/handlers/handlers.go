@@ -332,6 +332,43 @@ func handleCategories(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(toCategoryResponse(category))
 
+	case http.MethodPatch:
+		idStr := r.URL.Query().Get("id")
+		if idStr == "" {
+			http.Error(w, "Missing id", http.StatusBadRequest)
+			return
+		}
+		var id int64
+		if _, err := fmt.Sscanf(idStr, "%d", &id); err != nil {
+			http.Error(w, "Invalid id", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			Name  string `json:"name"`
+			Emoji string `json:"emoji"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+		if strings.TrimSpace(body.Name) == "" {
+			http.Error(w, "Name is required", http.StatusBadRequest)
+			return
+		}
+		if body.Emoji == "" {
+			body.Emoji = "💰"
+		}
+		if err := queries.UpdateCategory(r.Context(), db.UpdateCategoryParams{
+			Name:   strings.TrimSpace(body.Name),
+			Emoji:  body.Emoji,
+			ID:     id,
+			UserID: userID,
+		}); err != nil {
+			http.Error(w, "Failed to update category", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+
 	case http.MethodDelete:
 		idStr := r.URL.Query().Get("id")
 		if idStr == "" {

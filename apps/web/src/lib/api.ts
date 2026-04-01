@@ -29,6 +29,10 @@ export const api = {
     return data
   },
 
+  async updateCategory(id: number, cat: { name: string; emoji: string }) {
+    await client.patch(`/api/categories?id=${id}`, cat)
+  },
+
   async deleteCategory(id: number) {
     await client.delete(`/api/categories?id=${id}`)
   },
