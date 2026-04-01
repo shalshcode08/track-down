@@ -1,3 +1,4 @@
 {
+  "ignoreCommand": "git diff HEAD~1 --quiet -- apps/web/ bun.lock package.json",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

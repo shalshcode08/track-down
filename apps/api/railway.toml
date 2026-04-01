@@ -5,3 +5,4 @@ dockerfilePath = "Dockerfile"
 [deploy]
 startCommand = "./server"
 restartPolicyType = "ON_FAILURE"
+watchPatterns = ["apps/api/**"]

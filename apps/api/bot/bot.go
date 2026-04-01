@@ -145,9 +145,8 @@ func handleText(c telebot.Context) error {
 		// Stateless callback data: "action:categoryID:amount"
 		callbackData := fmt.Sprintf("log:%d:%.2f", cat.ID, amount)
 		btn := telebot.InlineButton{
-			Unique: fmt.Sprintf("cat-%d", cat.ID),
-			Text:   fmt.Sprintf("%s %s", cat.Emoji, cat.Name),
-			Data:   callbackData,
+			Text: fmt.Sprintf("%s %s", cat.Emoji, cat.Name),
+			Data: callbackData,
 		}
 		rows = append(rows, []telebot.InlineButton{btn})
 	}
