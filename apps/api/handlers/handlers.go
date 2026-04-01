@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -173,16 +174,28 @@ func handleCodeAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	telegramID := bot.RedeemLoginCode(body.Code)
-	if telegramID == 0 {
-		http.Error(w, "Invalid or expired code", http.StatusUnauthorized)
-		return
-	}
+	var user db.User
 
-	user, err := queries.GetUserByTelegramID(r.Context(), telegramID)
-	if err != nil {
-		http.Error(w, "User not found", http.StatusUnauthorized)
-		return
+	// Dev bypass: if DEV_LOGIN_CODE is set and matches, log in as the first user.
+	if devCode := os.Getenv("DEV_LOGIN_CODE"); devCode != "" && body.Code == devCode {
+		users, err := queries.GetUserByID(r.Context(), 1)
+		if err != nil {
+			http.Error(w, "No users in database yet", http.StatusUnauthorized)
+			return
+		}
+		user = users
+	} else {
+		telegramID := bot.RedeemLoginCode(body.Code)
+		if telegramID == 0 {
+			http.Error(w, "Invalid or expired code", http.StatusUnauthorized)
+			return
+		}
+		var err error
+		user, err = queries.GetUserByTelegramID(r.Context(), telegramID)
+		if err != nil {
+			http.Error(w, "User not found", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	tokenString, expiry, err := mintToken(user.ID)

@@ -25,8 +25,10 @@ export default function LoginPage() {
     onError: () => toast.error('Invalid or expired code')
   })
 
+  const canSubmit = code.length === 6 || (import.meta.env.DEV && code.length > 0)
+
   const handleLogin = () => {
-    if (code.length === 6) loginMut.mutate(code)
+    if (canSubmit) loginMut.mutate(code)
   }
 
   if (isLoading) return null
@@ -104,29 +106,30 @@ export default function LoginPage() {
           </div>
 
           <Input
-            inputMode="numeric" maxLength={6}
-            value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
-            onKeyDown={e => e.key === 'Enter' && code.length === 6 && handleLogin()}
+            inputMode={import.meta.env.DEV ? 'text' : 'numeric'}
+            maxLength={import.meta.env.DEV ? undefined : 6}
+            value={code} onChange={e => setCode(import.meta.env.DEV ? e.target.value : e.target.value.replace(/\D/g, ''))}
+            onKeyDown={e => e.key === 'Enter' && canSubmit && handleLogin()}
             disabled={loginMut.isPending}
             placeholder="_ _ _ _ _ _"
             style={{
-              background: T.bg, border: `1px solid ${code.length === 6 ? T.text : T.border}`,
+              background: T.bg, border: `1px solid ${canSubmit ? T.text : T.border}`,
               color: T.text, fontFamily: T.fontMono, fontSize: 26,
               textAlign: 'center', letterSpacing: '0.4em',
               height: 58, borderRadius: 10, marginBottom: 10,
-              transition: 'border-color 0.2s', boxShadow: code.length === 6 ? `0 0 0 1px ${T.text}` : 'none',
+              transition: 'border-color 0.2s', boxShadow: canSubmit ? `0 0 0 1px ${T.text}` : 'none',
             }}
           />
 
-          <Button onClick={handleLogin} disabled={code.length !== 6 || loginMut.isPending} style={{
+          <Button onClick={handleLogin} disabled={!canSubmit || loginMut.isPending} style={{
             width: '100%', height: 44,
-            background: code.length === 6 ? T.text : T.bg,
-            color: code.length === 6 ? T.bg : T.textDim,
+            background: canSubmit ? T.text : T.bg,
+            color: canSubmit ? T.bg : T.textDim,
             fontFamily: T.fontMono, fontWeight: 700, fontSize: 13,
-            border: `1px solid ${code.length === 6 ? T.text : T.border}`,
+            border: `1px solid ${canSubmit ? T.text : T.border}`,
             borderRadius: 10, transition: 'all 0.2s',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            boxShadow: code.length === 6 ? `0 0 20px ${T.text}30` : 'none',
+            boxShadow: canSubmit ? `0 0 20px ${T.text}30` : 'none',
           }}>
             {loginMut.isPending ? 'verifying...' : 'authenticate'} <ArrowRight size={15} />
           </Button>

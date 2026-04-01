@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { format, startOfWeek, startOfMonth, subDays } from 'date-fns'
+import { format, startOfWeek, startOfMonth, subDays, addDays, differenceInDays, getDaysInMonth } from 'date-fns'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Trash2, Plus, Download } from 'lucide-react'
 import {
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { getCategoryBreakdown, groupByDay, type Expense, type Category } from '@/data/mock'
 import { T, CURRENCY, PRESETS, formatDay } from '@/lib/theme'
 import { api } from '@/lib/api'
+import { useCountUp } from '@/lib/useCountUp'
 import { toast } from 'sonner'
 
 function getDateRange(preset: string): { start: string; end: string } {
@@ -51,9 +52,75 @@ function getPeriodDays(preset: string): number {
   }
 }
 
-function exportCSV(expenses: ReturnType<typeof Array.prototype.slice>, preset: string) {
+function getPreviousDateRange(preset: string): { start: string; end: string } | null {
+  const now = new Date()
+  switch (preset) {
+    case 'Today': {
+      const d = format(subDays(now, 1), 'yyyy-MM-dd')
+      return { start: d, end: d }
+    }
+    case 'This Week': {
+      const monday = startOfWeek(now, { weekStartsOn: 1 })
+      const elapsed = differenceInDays(now, monday)
+      const prevMonday = subDays(monday, 7)
+      return { start: format(prevMonday, 'yyyy-MM-dd'), end: format(addDays(prevMonday, elapsed), 'yyyy-MM-dd') }
+    }
+    case 'This Month': {
+      const lastMonthEnd = subDays(startOfMonth(now), 1)
+      const lastMonthStart = startOfMonth(lastMonthEnd)
+      const sameDay = Math.min(now.getDate(), getDaysInMonth(lastMonthEnd))
+      const prevEnd = new Date(lastMonthStart.getFullYear(), lastMonthStart.getMonth(), sameDay)
+      return { start: format(lastMonthStart, 'yyyy-MM-dd'), end: format(prevEnd, 'yyyy-MM-dd') }
+    }
+    case 'Last 30 Days':
+      return { start: format(subDays(now, 60), 'yyyy-MM-dd'), end: format(subDays(now, 31), 'yyyy-MM-dd') }
+    default: return null
+  }
+}
+
+function getPrevLabel(preset: string): string {
+  switch (preset) {
+    case 'Today':        return 'vs yesterday'
+    case 'This Week':    return 'vs last week'
+    case 'This Month':   return 'vs last month'
+    case 'Last 30 Days': return 'vs prev 30d'
+    default:             return 'vs prev period'
+  }
+}
+
+function TrendBadge({ current, previous, label }: { current: number; previous: number | undefined; label: string }) {
+  if (previous === undefined) {
+    return <span style={{ fontSize: 11, color: T.textDim, fontFamily: T.fontMono }}>{label}</span>
+  }
+  if (previous === 0 && current === 0) {
+    return <span style={{ fontSize: 11, color: T.textDim, fontFamily: T.fontMono }}>{label}</span>
+  }
+  if (previous === 0) {
+    return <span style={{ fontSize: 11, color: T.textDim, fontFamily: T.fontMono }}>new · {label}</span>
+  }
+  const pct = ((current - previous) / previous) * 100
+  if (Math.abs(pct) < 0.5) {
+    return <span style={{ fontSize: 11, color: T.textDim, fontFamily: T.fontMono }}>flat · {label}</span>
+  }
+  const up = pct > 0
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+      <span style={{
+        fontSize: 11, fontFamily: T.fontMono, fontWeight: 600,
+        color: up ? '#ef4444' : '#22c55e',
+        background: up ? '#450a0a' : '#052e16',
+        padding: '2px 7px', borderRadius: 5,
+      }}>
+        {up ? '↑' : '↓'} {Math.abs(pct).toFixed(0)}%
+      </span>
+      <span style={{ fontSize: 11, color: T.textDim, fontFamily: T.fontMono }}>{label}</span>
+    </span>
+  )
+}
+
+function exportCSV(expenses: Expense[], preset: string) {
   const header = 'Date,Time,Category,Emoji,Amount,Note'
-  const rows = expenses.map((e: { created_at: string; category_name: string; category_emoji: string; amount: number; note: string | null }) => {
+  const rows = expenses.map((e) => {
     const d = new Date(e.created_at)
     const date = format(d, 'yyyy-MM-dd')
     const time = format(d, 'HH:mm:ss')
@@ -81,14 +148,22 @@ export default function Dashboard() {
 
   const { start, end } = getDateRange(preset)
   const periodDays = getPeriodDays(preset)
+  const prevRange = getPreviousDateRange(preset)
+  const prevLabel = getPrevLabel(preset)
 
   const { data: expenses = [] } = useQuery({
     queryKey: ['expenses', start, end],
     queryFn: () => api.getExpenses(start, end),
+    placeholderData: (prev) => prev,
   })
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: () => api.getCategories(),
+  })
+  const { data: prevExpenses } = useQuery({
+    queryKey: ['expenses', prevRange?.start, prevRange?.end, 'prev'],
+    queryFn: () => api.getExpenses(prevRange!.start, prevRange!.end),
+    enabled: !!prevRange,
   })
 
   const delMut = useMutation({
@@ -122,6 +197,14 @@ export default function Dashboard() {
 
   const total     = expenses.reduce((s, e) => s + e.amount, 0)
   const dailyAvg  = periodDays > 0 ? total / periodDays : 0
+  const prevTotal    = prevExpenses ? prevExpenses.reduce((s, e) => s + e.amount, 0) : undefined
+  const prevDailyAvg = prevTotal !== undefined && periodDays > 0 ? prevTotal / periodDays : undefined
+  const prevCount    = prevExpenses?.length
+
+  const animTotal    = useCountUp(total)
+  const animDailyAvg = useCountUp(dailyAvg)
+  const animCount    = useCountUp(expenses.length)
+
   const breakdown = getCategoryBreakdown(expenses, categories)
   const grouped   = groupByDay(expenses)
   const chartData = Object.entries(grouped)
@@ -158,15 +241,6 @@ export default function Dashboard() {
               {p}
             </button>
           ))}
-          {expenses.length > 0 && (
-            <Button onClick={() => exportCSV(expenses, preset)} style={{
-              background: 'transparent', color: T.textMid, fontFamily: T.font, fontSize: 12,
-              height: 30, borderRadius: 8, gap: 4, paddingLeft: 10, paddingRight: 12,
-              border: `1px solid ${T.border}`,
-            }}>
-              <Download size={12} /> Export
-            </Button>
-          )}
           <Button onClick={() => setAddOpen(true)} style={{
             background: T.text, color: T.bg, fontFamily: T.font, fontSize: 12,
             height: 30, borderRadius: 8, gap: 4, paddingLeft: 10, paddingRight: 12,
@@ -177,11 +251,23 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-        {[
-          { label: 'Total',        val: `${CURRENCY}${total.toFixed(2)}`,      sub: 'this period' },
-          { label: 'Transactions', val: String(expenses.length),                 sub: 'this period' },
-          { label: 'Daily avg',    val: `${CURRENCY}${dailyAvg.toFixed(2)}`,    sub: 'per day' },
-        ].map(({ label, val, sub }) => (
+        {([
+          {
+            label: 'Total',
+            val: `${CURRENCY}${animTotal.toFixed(2)}`,
+            current: total, previous: prevTotal,
+          },
+          {
+            label: 'Transactions',
+            val: Math.round(animCount).toString(),
+            current: expenses.length, previous: prevCount,
+          },
+          {
+            label: 'Daily avg',
+            val: `${CURRENCY}${animDailyAvg.toFixed(2)}`,
+            current: dailyAvg, previous: prevDailyAvg,
+          },
+        ] as const).map(({ label, val, current, previous }) => (
           <Card key={label} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, boxShadow: 'none', position: 'relative', overflow: 'hidden' }}>
             <div style={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -195,7 +281,9 @@ export default function Dashboard() {
               <p style={{ fontFamily: T.fontMono, fontSize: 26, fontWeight: 500, color: T.text, letterSpacing: '-0.03em' }}>
                 {val}
               </p>
-              <p style={{ fontSize: 12, color: T.textDim, marginTop: 4 }}>{sub}</p>
+              <div style={{ marginTop: 6 }}>
+                <TrendBadge current={current} previous={previous} label={prevLabel} />
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -203,42 +291,56 @@ export default function Dashboard() {
 
       {chartData.length > 0 && (
         <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 13, fontWeight: 600, color: T.textMid, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12, fontFamily: T.font }}>
-            Trend
-          </h2>
-          <Card style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, boxShadow: 'none', padding: '24px 20px 0 0', position: 'relative', overflow: 'hidden' }}>
-            <div style={{
-              position: 'absolute', top: '-50%', left: '-20%', width: '140%', height: '200%',
-              background: `radial-gradient(circle, #ffffff05 0%, transparent 60%)`,
-              pointerEvents: 'none',
-            }} />
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={T.text} stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor={T.text} stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={T.borderHi} opacity={0.5} />
-                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: T.textDim, fontFamily: T.fontMono }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: T.textDim, fontFamily: T.fontMono }} tickFormatter={(val) => `${CURRENCY}${val}`} />
-                <Tooltip
-                  contentStyle={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, fontFamily: T.fontMono, fontSize: 12 }}
-                  itemStyle={{ color: T.text, fontWeight: 600 }}
-                />
-                <Area type="monotone" dataKey="amount" stroke={T.text} strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </Card>
-        </div>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: T.textMid, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12, fontFamily: T.font }}>
+          Trend
+        </h2>
+        <Card style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, boxShadow: 'none', padding: '24px 20px 0 0', position: 'relative', overflow: 'hidden' }}>
+          <div style={{
+            position: 'absolute', top: '-50%', left: '-20%', width: '140%', height: '200%',
+            background: `radial-gradient(circle, #ffffff05 0%, transparent 60%)`,
+            pointerEvents: 'none',
+          }} />
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={T.text} stopOpacity={0.2}/>
+                  <stop offset="95%" stopColor={T.text} stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={T.borderHi} opacity={0.5} />
+              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: T.textDim, fontFamily: T.fontMono }} dy={10} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: T.textDim, fontFamily: T.fontMono }} tickFormatter={(val) => `${CURRENCY}${val}`} />
+              <Tooltip
+                contentStyle={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, fontFamily: T.fontMono, fontSize: 12 }}
+                itemStyle={{ color: T.text, fontWeight: 600 }}
+              />
+              <Area type="monotone" dataKey="amount" stroke={T.text} strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
         <div>
-          <h2 style={{ fontSize: 13, fontWeight: 600, color: T.textMid, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12, fontFamily: T.font }}>
-            Transactions
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <h2 style={{ fontSize: 13, fontWeight: 600, color: T.textMid, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.font }}>
+              Transactions
+            </h2>
+            {expenses.length > 0 && (
+              <button onClick={() => exportCSV(expenses, preset)} title="Export CSV" style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px',
+                borderRadius: 6, color: T.textDim, display: 'flex', alignItems: 'center',
+                transition: 'color 0.15s',
+              }}
+                onMouseEnter={e => (e.currentTarget.style.color = T.text)}
+                onMouseLeave={e => (e.currentTarget.style.color = T.textDim)}
+              >
+                <Download size={13} />
+              </button>
+            )}
+          </div>
           <Card style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden', boxShadow: 'none' }}>
             {expenses.length === 0 ? (
               <div style={{ padding: '48px 24px', textAlign: 'center' }}>
