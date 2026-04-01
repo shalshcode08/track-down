@@ -41,7 +41,7 @@ export default function CategoriesPage() {
 
   const add = () => {
     if (!name.trim()) return
-    addMut.mutate({ user_id: 1, name: name.trim(), emoji, sort_order: cats.length })
+    addMut.mutate({ name: name.trim(), emoji, sort_order: cats.length })
   }
   
   const del = (id: number) => delMut.mutate(id)
@@ -61,6 +61,14 @@ export default function CategoriesPage() {
       </div>
 
       <Card style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, boxShadow: 'none', overflow: 'hidden' }}>
+        {cats.length === 0 && (
+          <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+            <p style={{ fontSize: 13, color: T.textMid, fontFamily: T.font }}>No categories yet</p>
+            <p style={{ fontSize: 12, color: T.textDim, fontFamily: T.fontMono, marginTop: 4 }}>
+              Add one to start logging expenses via Telegram.
+            </p>
+          </div>
+        )}
         {cats.map((cat, i) => (
           <div key={cat.id}>
             <div style={{

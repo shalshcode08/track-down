@@ -80,12 +80,27 @@ func Start(queries *db.Queries, token string) error {
 	Bot.Handle("/today", handleToday)
 	Bot.Handle("/month", handleMonth)
 	Bot.Handle("/help", handleHelp)
+	Bot.Handle("/whoami", handleWhoami)
 
-	go func() {
-		Bot.Start()
-	}()
+	go Bot.Start()
+	go cleanupExpiredCodes()
 
 	return nil
+}
+
+// cleanupExpiredCodes removes expired login codes from memory every minute.
+func cleanupExpiredCodes() {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		loginCodesMu.Lock()
+		for code, entry := range loginCodes {
+			if time.Now().After(entry.ExpiresAt) {
+				delete(loginCodes, code)
+			}
+		}
+		loginCodesMu.Unlock()
+	}
 }
 
 func handleText(c telebot.Context) error {
@@ -103,9 +118,20 @@ func handleText(c telebot.Context) error {
 		return nil
 	}
 	user := ensureUser(sender)
+	if user.ID == 0 {
+		log.Printf("[handleText] ensureUser returned zero ID for telegram_id=%d", sender.ID)
+		return c.Send("❌ Could not find your account. Please try /start first.")
+	}
+
+	log.Printf("[handleText] user_id=%d telegram_id=%d amount=%.2f", user.ID, sender.ID, amount)
 
 	categories, err := Queries.ListCategoriesForUser(context.Background(), user.ID)
-	if err != nil || len(categories) == 0 {
+	if err != nil {
+		log.Printf("[handleText] DB error listing categories for user_id=%d: %v", user.ID, err)
+		return c.Send("❌ Could not load your categories. Please try again in a moment.")
+	}
+	if len(categories) == 0 {
+		log.Printf("[handleText] no categories found for user_id=%d", user.ID)
 		return c.Send(
 			"⚠️ *No categories found*\n\n"+
 				"You need at least one category before logging expenses.\n\n"+
@@ -185,19 +211,21 @@ func handleCallback(c telebot.Context) error {
 func ensureUser(sender *telebot.User) db.User {
 	user, err := Queries.GetUserByTelegramID(context.Background(), sender.ID)
 	if err == nil {
+		log.Printf("[ensureUser] found user_id=%d for telegram_id=%d", user.ID, sender.ID)
 		return user
 	}
 
+	log.Printf("[ensureUser] user not found for telegram_id=%d, creating: %v", sender.ID, err)
 	newUser, err := Queries.CreateUser(context.Background(), db.CreateUserParams{
 		TelegramID: sender.ID,
 		Name:       sender.FirstName,
 	})
 	if err != nil {
-		log.Printf("Failed to create user: %v", err)
-		// Return an empty user on failure
+		log.Printf("[ensureUser] failed to create user for telegram_id=%d: %v", sender.ID, err)
 		return db.User{}
 	}
 
+	log.Printf("[ensureUser] created user_id=%d for telegram_id=%d", newUser.ID, sender.ID)
 	return newUser
 }
 
@@ -278,6 +306,21 @@ func handleMonth(c telebot.Context) error {
 
 	monthName := now.Format("January 2006")
 	msg := fmt.Sprintf("🗓️ *%s spending*\n\n*$%.2f*", monthName, total.(float64))
+	return c.Send(msg, &telebot.SendOptions{ParseMode: "Markdown"})
+}
+
+func handleWhoami(c telebot.Context) error {
+	sender := c.Sender()
+	user := ensureUser(sender)
+	categories, _ := Queries.ListCategoriesForUser(context.Background(), user.ID)
+	msg := fmt.Sprintf(
+		"🔍 *Your account info*\n\n"+
+			"Telegram ID: `%d`\n"+
+			"DB User ID: `%d`\n"+
+			"Name: %s\n"+
+			"Categories: %d",
+		sender.ID, user.ID, user.Name, len(categories),
+	)
 	return c.Send(msg, &telebot.SendOptions{ParseMode: "Markdown"})
 }
 

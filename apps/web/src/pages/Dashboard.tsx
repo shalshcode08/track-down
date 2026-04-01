@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { format } from 'date-fns'
+import { format, startOfWeek, startOfMonth, subDays } from 'date-fns'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Plus } from 'lucide-react'
 import {
   Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid,
   PieChart, Pie, Cell
@@ -9,39 +9,109 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
-import { getCategoryBreakdown, groupByDay, type Expense } from '@/data/mock'
+import { getCategoryBreakdown, groupByDay, type Expense, type Category } from '@/data/mock'
 import { T, PRESETS, formatDay } from '@/lib/theme'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
+
+function getDateRange(preset: string): { start: string; end: string } {
+  const now = new Date()
+  const today = format(now, 'yyyy-MM-dd')
+  switch (preset) {
+    case 'Today':
+      return { start: today, end: today }
+    case 'This Week': {
+      const monday = startOfWeek(now, { weekStartsOn: 1 })
+      return { start: format(monday, 'yyyy-MM-dd'), end: today }
+    }
+    case 'This Month': {
+      const first = startOfMonth(now)
+      return { start: format(first, 'yyyy-MM-dd'), end: today }
+    }
+    case 'Last 30 Days': {
+      return { start: format(subDays(now, 30), 'yyyy-MM-dd'), end: today }
+    }
+    default:
+      return { start: format(startOfMonth(now), 'yyyy-MM-dd'), end: today }
+  }
+}
+
+function getPeriodDays(preset: string): number {
+  const now = new Date()
+  switch (preset) {
+    case 'Today': return 1
+    case 'This Week': return 7
+    case 'This Month': return now.getDate()
+    case 'Last 30 Days': return 30
+    default: return now.getDate()
+  }
+}
 
 export default function Dashboard() {
   const queryClient = useQueryClient()
   const [preset, setPreset] = useState('This Month')
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null)
-  
-  const { data: expenses = [] } = useQuery({ queryKey: ['expenses'], queryFn: () => api.getExpenses() })
-  const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: () => api.getCategories() })
+  const [addOpen, setAddOpen] = useState(false)
+  const [addAmount, setAddAmount] = useState('')
+  const [addCategoryID, setAddCategoryID] = useState<number | null>(null)
+  const [addNote, setAddNote] = useState('')
+
+  const { start, end } = getDateRange(preset)
+  const periodDays = getPeriodDays(preset)
+
+  const { data: expenses = [] } = useQuery({
+    queryKey: ['expenses', start, end],
+    queryFn: () => api.getExpenses(start, end),
+  })
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => api.getCategories(),
+  })
 
   const delMut = useMutation({
-    mutationFn: api.deleteExpense,
+    mutationFn: (id: number) => api.deleteExpense(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
       setSelectedExpense(null)
       toast.success('Transaction deleted')
-    }
+    },
+    onError: () => toast.error('Failed to delete transaction'),
   })
 
-  const total      = expenses.reduce((s, e) => s + e.amount, 0)
-  const breakdown  = getCategoryBreakdown(expenses, categories)
-  const grouped    = groupByDay(expenses)
-  const chartData  = Object.entries(grouped)
+  const addMut = useMutation({
+    mutationFn: api.createExpense,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      setAddOpen(false)
+      setAddAmount('')
+      setAddCategoryID(null)
+      setAddNote('')
+      toast.success('Expense added')
+    },
+    onError: () => toast.error('Failed to add expense'),
+  })
+
+  const handleAdd = () => {
+    const amount = parseFloat(addAmount)
+    if (!addCategoryID || isNaN(amount) || amount <= 0) return
+    addMut.mutate({ category_id: addCategoryID, amount, note: addNote.trim() || undefined })
+  }
+
+  const total     = expenses.reduce((s, e) => s + e.amount, 0)
+  const dailyAvg  = periodDays > 0 ? total / periodDays : 0
+  const breakdown = getCategoryBreakdown(expenses, categories)
+  const grouped   = groupByDay(expenses)
+  const chartData = Object.entries(grouped)
     .map(([date, dayExp]) => ({
       date: format(new Date(date + 'T12:00:00'), 'MMM d'),
-      amount: dayExp.reduce((s, e) => s + e.amount, 0)
-    })).reverse()
-    
+      amount: dayExp.reduce((s, e) => s + e.amount, 0),
+    }))
+    .reverse()
+
   const donutData = breakdown.map(c => ({ name: c.name, value: c.total }))
   const COLORS = [T.text, '#e4e4e7', '#a1a1aa', '#71717a', '#3f3f46', '#27272a']
 
@@ -56,7 +126,7 @@ export default function Dashboard() {
             {format(new Date(), 'MMMM yyyy')}
           </p>
         </div>
-        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {PRESETS.map(p => (
             <button key={p} onClick={() => setPreset(p)} style={{
               padding: '5px 12px', borderRadius: 8, fontSize: 12,
@@ -69,20 +139,26 @@ export default function Dashboard() {
               {p}
             </button>
           ))}
+          <Button onClick={() => setAddOpen(true)} style={{
+            background: T.text, color: T.bg, fontFamily: T.font, fontSize: 12,
+            height: 30, borderRadius: 8, gap: 4, paddingLeft: 10, paddingRight: 12,
+          }}>
+            <Plus size={12} /> Add
+          </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-6">
         {[
-          { label: 'Total',        val: `$${total.toFixed(2)}`,    sub: 'all categories' },
-          { label: 'Transactions', val: String(expenses.length),   sub: 'this period' },
-          { label: 'Daily avg',    val: `$${(total / 7).toFixed(2)}`, sub: 'per day' },
+          { label: 'Total',        val: `$${total.toFixed(2)}`,        sub: 'this period' },
+          { label: 'Transactions', val: String(expenses.length),       sub: 'this period' },
+          { label: 'Daily avg',    val: `$${dailyAvg.toFixed(2)}`,     sub: 'per day' },
         ].map(({ label, val, sub }) => (
           <Card key={label} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, boxShadow: 'none', position: 'relative', overflow: 'hidden' }}>
             <div style={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
               background: `radial-gradient(circle at top right, #ffffff08 0%, transparent 70%)`,
-              pointerEvents: 'none'
+              pointerEvents: 'none',
             }} />
             <CardContent style={{ padding: '20px 24px', position: 'relative', zIndex: 1 }}>
               <p style={{ fontSize: 11, fontFamily: T.font, fontWeight: 500, color: T.textMid, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 8 }}>
@@ -97,94 +173,104 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 13, fontWeight: 600, color: T.textMid, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12, fontFamily: T.font }}>
-          Analyzing
-        </h2>
-        <Card style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, boxShadow: 'none', padding: '24px 20px 0 0', position: 'relative', overflow: 'hidden' }}>
-          <div style={{
-            position: 'absolute', top: '-50%', left: '-20%', width: '140%', height: '200%',
-            background: `radial-gradient(circle, #ffffff05 0%, transparent 60%)`,
-            pointerEvents: 'none'
-          }} />
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={T.text} stopOpacity={0.2}/>
-                  <stop offset="95%" stopColor={T.text} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={T.borderHi} opacity={0.5} />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: T.textDim, fontFamily: T.fontMono }} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: T.textDim, fontFamily: T.fontMono }} tickFormatter={(val) => `$${val}`} />
-              <Tooltip 
-                contentStyle={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, fontFamily: T.fontMono, fontSize: 12 }}
-                itemStyle={{ color: T.text, fontWeight: 600 }}
-              />
-              <Area type="monotone" dataKey="amount" stroke={T.text} strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
+      {chartData.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{ fontSize: 13, fontWeight: 600, color: T.textMid, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12, fontFamily: T.font }}>
+            Trend
+          </h2>
+          <Card style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, boxShadow: 'none', padding: '24px 20px 0 0', position: 'relative', overflow: 'hidden' }}>
+            <div style={{
+              position: 'absolute', top: '-50%', left: '-20%', width: '140%', height: '200%',
+              background: `radial-gradient(circle, #ffffff05 0%, transparent 60%)`,
+              pointerEvents: 'none',
+            }} />
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={T.text} stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor={T.text} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={T.borderHi} opacity={0.5} />
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: T.textDim, fontFamily: T.fontMono }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: T.textDim, fontFamily: T.fontMono }} tickFormatter={(val) => `$${val}`} />
+                <Tooltip
+                  contentStyle={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, fontFamily: T.fontMono, fontSize: 12 }}
+                  itemStyle={{ color: T.text, fontWeight: 600 }}
+                />
+                <Area type="monotone" dataKey="amount" stroke={T.text} strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Card>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
-
         <div>
           <h2 style={{ fontSize: 13, fontWeight: 600, color: T.textMid, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12, fontFamily: T.font }}>
             Transactions
           </h2>
           <Card style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, overflow: 'hidden', boxShadow: 'none' }}>
-            <div>
-              {Object.entries(grouped).map(([date, dayExp]) => (
-                <div key={date}>
-                  <div style={{ padding: '12px 20px 8px', background: T.bg, borderBottom: `1px solid ${T.border}` }}>
-                    <span style={{ fontSize: 11, fontFamily: T.font, fontWeight: 600, color: T.textMid, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      {formatDay(date)}
-                    </span>
-                    <span style={{ fontSize: 11, fontFamily: T.fontMono, color: T.textDim, marginLeft: 8 }}>
-                      ${dayExp.reduce((s, e) => s + e.amount, 0).toFixed(2)}
-                    </span>
-                  </div>
-                  {dayExp.map((exp, i) => (
-                    <div key={exp.id}>
-                      <div 
-                        style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '13px 20px', transition: 'background 0.1s', cursor: 'pointer'
-                        }}
-                        onClick={() => setSelectedExpense(exp)}
-                        onMouseEnter={e => (e.currentTarget.style.background = T.bg)}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{
-                            width: 36, height: 36, borderRadius: 10,
-                            border: `1px solid ${T.border}`, background: T.bg,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
-                          }}>
-                            {exp.category_emoji}
-                          </div>
-                          <div>
-                            <p style={{ fontSize: 14, fontFamily: T.font, fontWeight: 500, color: T.text }}>{exp.category_name}</p>
-                            {exp.note && <p style={{ fontSize: 12, color: T.textMid, fontFamily: T.font }}>{exp.note}</p>}
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <p style={{ fontFamily: T.fontMono, fontSize: 14, fontWeight: 500, color: T.text }}>
-                            ${exp.amount.toFixed(2)}
-                          </p>
-                          <p style={{ fontSize: 11, color: T.textDim, fontFamily: T.fontMono }}>
-                            {format(new Date(exp.created_at), 'h:mm a')}
-                          </p>
-                        </div>
-                      </div>
-                      {i < dayExp.length - 1 && <Separator style={{ background: T.border }} />}
+            {expenses.length === 0 ? (
+              <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+                <p style={{ fontSize: 13, color: T.textMid, fontFamily: T.font }}>No transactions in this period</p>
+                <p style={{ fontSize: 12, color: T.textDim, fontFamily: T.fontMono, marginTop: 4 }}>
+                  Log via Telegram or click Add above
+                </p>
+              </div>
+            ) : (
+              <div>
+                {Object.entries(grouped).map(([date, dayExp]) => (
+                  <div key={date}>
+                    <div style={{ padding: '12px 20px 8px', background: T.bg, borderBottom: `1px solid ${T.border}` }}>
+                      <span style={{ fontSize: 11, fontFamily: T.font, fontWeight: 600, color: T.textMid, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        {formatDay(date)}
+                      </span>
+                      <span style={{ fontSize: 11, fontFamily: T.fontMono, color: T.textDim, marginLeft: 8 }}>
+                        ${dayExp.reduce((s, e) => s + e.amount, 0).toFixed(2)}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              ))}
-            </div>
+                    {dayExp.map((exp, i) => (
+                      <div key={exp.id}>
+                        <div
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '13px 20px', transition: 'background 0.1s', cursor: 'pointer',
+                          }}
+                          onClick={() => setSelectedExpense(exp)}
+                          onMouseEnter={e => (e.currentTarget.style.background = T.bg)}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{
+                              width: 36, height: 36, borderRadius: 10,
+                              border: `1px solid ${T.border}`, background: T.bg,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                            }}>
+                              {exp.category_emoji}
+                            </div>
+                            <div>
+                              <p style={{ fontSize: 14, fontFamily: T.font, fontWeight: 500, color: T.text }}>{exp.category_name}</p>
+                              {exp.note && <p style={{ fontSize: 12, color: T.textMid, fontFamily: T.font }}>{exp.note}</p>}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <p style={{ fontFamily: T.fontMono, fontSize: 14, fontWeight: 500, color: T.text }}>
+                              ${exp.amount.toFixed(2)}
+                            </p>
+                            <p style={{ fontSize: 11, color: T.textDim, fontFamily: T.fontMono }}>
+                              {format(new Date(exp.created_at), 'h:mm a')}
+                            </p>
+                          </div>
+                        </div>
+                        {i < dayExp.length - 1 && <Separator style={{ background: T.border }} />}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
 
@@ -194,64 +280,70 @@ export default function Dashboard() {
           </h2>
           <Card style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, boxShadow: 'none' }}>
             <CardContent style={{ padding: '20px' }}>
-              
-              {breakdown.length > 0 && (
-                <div style={{ height: 160, display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={donutData}
-                        cx="50%" cy="50%"
-                        innerRadius={50} outerRadius={70}
-                        paddingAngle={2}
-                        dataKey="value"
-                        stroke="none"
-                      >
-                        {donutData.map((_entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, fontFamily: T.fontMono, fontSize: 12 }}
-                        itemStyle={{ color: T.text, fontWeight: 600 }}
-                        formatter={(val: unknown) => `$${Number(val).toFixed(2)}`}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {breakdown.map((cat, i) => (
-                  <div key={cat.id}>
-                    <div style={{ padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 20, lineHeight: 1 }}>{cat.emoji}</span>
-                        <div>
-                          <p style={{ fontSize: 13, fontFamily: T.font, fontWeight: 500, color: T.text }}>{cat.name}</p>
-                          <p style={{ fontSize: 11, fontFamily: T.fontMono, color: T.textDim }}>{cat.count} txn</p>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: 13, fontFamily: T.fontMono, fontWeight: 500, color: T.text }}>
-                          ${cat.total.toFixed(2)}
-                        </p>
-                        <p style={{ fontSize: 11, fontFamily: T.fontMono, color: T.textDim }}>
-                          {cat.pct.toFixed(0)}%
-                        </p>
-                      </div>
-                    </div>
-                    <div style={{ height: 1, background: T.border, borderRadius: 999, overflow: 'hidden', marginBottom: 0 }}>
-                      <div style={{ height: '100%', background: T.text, width: `${cat.pct}%`, transition: 'width 0.8s ease' }} />
-                    </div>
-                    {i < breakdown.length - 1 && <div style={{ height: 0 }} />}
+              {breakdown.length === 0 ? (
+                <p style={{ fontSize: 12, color: T.textDim, fontFamily: T.fontMono, textAlign: 'center', padding: '16px 0' }}>
+                  No data yet
+                </p>
+              ) : (
+                <>
+                  <div style={{ height: 160, display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={donutData}
+                          cx="50%" cy="50%"
+                          innerRadius={50} outerRadius={70}
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {donutData.map((_entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, fontFamily: T.fontMono, fontSize: 12 }}
+                          itemStyle={{ color: T.text, fontWeight: 600 }}
+                          formatter={(val: unknown) => `$${Number(val).toFixed(2)}`}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
-                ))}
-              </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {breakdown.map((cat, i) => (
+                      <div key={cat.id}>
+                        <div style={{ padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: 20, lineHeight: 1 }}>{cat.emoji}</span>
+                            <div>
+                              <p style={{ fontSize: 13, fontFamily: T.font, fontWeight: 500, color: T.text }}>{cat.name}</p>
+                              <p style={{ fontSize: 11, fontFamily: T.fontMono, color: T.textDim }}>{cat.count} txn</p>
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <p style={{ fontSize: 13, fontFamily: T.fontMono, fontWeight: 500, color: T.text }}>
+                              ${cat.total.toFixed(2)}
+                            </p>
+                            <p style={{ fontSize: 11, fontFamily: T.fontMono, color: T.textDim }}>
+                              {cat.pct.toFixed(0)}%
+                            </p>
+                          </div>
+                        </div>
+                        <div style={{ height: 1, background: T.border, borderRadius: 999, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', background: T.text, width: `${cat.pct}%`, transition: 'width 0.8s ease' }} />
+                        </div>
+                        {i < breakdown.length - 1 && <div style={{ height: 0 }} />}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Expense detail sheet */}
       <Sheet open={!!selectedExpense} onOpenChange={(open) => !open && setSelectedExpense(null)}>
         <SheetContent style={{ background: T.surface, borderLeft: `1px solid ${T.border}`, maxWidth: 400, fontFamily: T.font }}>
           <SheetHeader style={{ marginBottom: 24 }}>
@@ -295,18 +387,102 @@ export default function Dashboard() {
 
               <Separator style={{ background: T.border, margin: '8px 0' }} />
 
-              <Button 
+              <Button
                 variant="destructive"
                 style={{ width: '100%', background: '#450a0a', color: T.red, border: `1px solid #7f1d1d`, fontFamily: T.font, fontSize: 13 }}
                 onClick={() => delMut.mutate(selectedExpense.id)}
                 disabled={delMut.isPending}
               >
-                <Trash2 size={14} style={{ marginRight: 8 }} /> {delMut.isPending ? 'Deleting...' : 'Delete Transaction'}
+                <Trash2 size={14} style={{ marginRight: 8 }} />
+                {delMut.isPending ? 'Deleting...' : 'Delete Transaction'}
               </Button>
             </div>
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Add expense dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, maxWidth: 380, fontFamily: T.font }}>
+          <DialogHeader style={{ marginBottom: 20 }}>
+            <DialogTitle style={{ fontFamily: T.font, fontWeight: 700, fontSize: 18, color: T.text }}>
+              Add Expense
+            </DialogTitle>
+          </DialogHeader>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <p style={{ fontSize: 11, fontFamily: T.font, fontWeight: 600, color: T.textMid, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                Amount
+              </p>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={addAmount}
+                onChange={e => setAddAmount(e.target.value)}
+                autoFocus
+                style={{ background: T.bg, border: `1px solid ${T.border}`, color: T.text, fontFamily: T.fontMono, fontSize: 22, textAlign: 'center', height: 52, borderRadius: 10 }}
+              />
+            </div>
+
+            <div>
+              <p style={{ fontSize: 11, fontFamily: T.font, fontWeight: 600, color: T.textMid, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                Category
+              </p>
+              {categories.length === 0 ? (
+                <p style={{ fontSize: 13, color: T.textDim, fontFamily: T.fontMono }}>No categories yet — add some first.</p>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {categories.map((cat: Category) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setAddCategoryID(cat.id)}
+                      style={{
+                        padding: '6px 12px', borderRadius: 8, fontSize: 13,
+                        fontFamily: T.font, cursor: 'pointer', transition: 'all 0.12s',
+                        background: addCategoryID === cat.id ? T.text : T.bg,
+                        color: addCategoryID === cat.id ? T.bg : T.textMid,
+                        border: `1px solid ${addCategoryID === cat.id ? T.text : T.border}`,
+                      }}
+                    >
+                      {cat.emoji} {cat.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <p style={{ fontSize: 11, fontFamily: T.font, fontWeight: 600, color: T.textMid, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                Note <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
+              </p>
+              <Input
+                placeholder="What was this for?"
+                value={addNote}
+                onChange={e => setAddNote(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                style={{ background: T.bg, border: `1px solid ${T.border}`, color: T.text, fontFamily: T.font, borderRadius: 9 }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <Button onClick={() => setAddOpen(false)} style={{ flex: 1, background: 'transparent', color: T.textMid, fontFamily: T.font, borderRadius: 9, border: `1px solid ${T.border}` }}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAdd}
+                disabled={!addCategoryID || !addAmount || parseFloat(addAmount) <= 0 || addMut.isPending}
+                style={{ flex: 1, background: T.text, color: T.bg, fontFamily: T.font, borderRadius: 9 }}
+              >
+                {addMut.isPending ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

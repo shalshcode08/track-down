@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +16,27 @@ import (
 
 	"github.com/joho/godotenv"
 )
+
+// responseWriter wraps http.ResponseWriter to capture the status code for logging.
+type responseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (rw *responseWriter) WriteHeader(status int) {
+	rw.status = status
+	rw.ResponseWriter.WriteHeader(status)
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rw := &responseWriter{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rw, r)
+		duration := time.Since(start)
+		log.Printf("%-6s %-40s %d  %s", r.Method, r.URL.RequestURI(), rw.status, duration.Round(time.Microsecond))
+	})
+}
 
 func corsMiddleware(origin string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +53,9 @@ func corsMiddleware(origin string, next http.Handler) http.Handler {
 }
 
 func main() {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lmsgprefix)
+	log.SetPrefix("  ")
+
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using environment variables")
 	}
@@ -45,6 +70,7 @@ func main() {
 		log.Fatalf("Failed to open database: %v", err)
 	}
 	defer database.Close()
+	log.Printf("Database opened: %s", dbPath)
 
 	queries := db.New(database)
 
@@ -56,6 +82,8 @@ func main() {
 	if err := bot.Start(queries, botToken); err != nil {
 		log.Printf("WARNING: Telegram bot failed to start: %v", err)
 		log.Println("HTTP server will still run, but bot features are unavailable.")
+	} else {
+		log.Println("Telegram bot started")
 	}
 
 	mux := http.NewServeMux()
@@ -73,13 +101,33 @@ func main() {
 	secure := strings.HasPrefix(allowedOrigin, "https://")
 	handlers.Setup(mux, queries, botToken, secure)
 
+	// Print registered routes at startup
+	routes := []string{
+		"POST   /api/auth/code",
+		"POST   /api/auth/telegram",
+		"GET    /api/me",
+		"GET    /api/categories",
+		"POST   /api/categories",
+		"DELETE /api/categories?id=",
+		"GET    /api/expenses?start=&end=",
+		"POST   /api/expenses",
+		"DELETE /api/expenses?id=",
+	}
+	fmt.Println()
+	log.Printf("Registered routes:")
+	for _, r := range routes {
+		log.Printf("  %s", r)
+	}
+	fmt.Println()
+
 	server := &http.Server{
 		Addr:    ":" + port,
-		Handler: corsMiddleware(allowedOrigin, mux),
+		Handler: loggingMiddleware(corsMiddleware(allowedOrigin, mux)),
 	}
 
 	go func() {
-		log.Printf("Server starting on port %s", port)
+		log.Printf("Server listening on http://localhost:%s", port)
+		log.Printf("CORS allowed origin: %s", allowedOrigin)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}
@@ -89,13 +137,12 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	log.Println("Shutting down...")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
-
-	log.Println("Server exited")
+	log.Println("Server stopped")
 }

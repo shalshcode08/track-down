@@ -99,6 +99,20 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const deleteExpense = `-- name: DeleteExpense :exec
+DELETE FROM expenses WHERE id = ? AND user_id = ?
+`
+
+type DeleteExpenseParams struct {
+	ID     int64
+	UserID int64
+}
+
+func (q *Queries) DeleteExpense(ctx context.Context, arg DeleteExpenseParams) error {
+	_, err := q.db.ExecContext(ctx, deleteExpense, arg.ID, arg.UserID)
+	return err
+}
+
 const deleteCategory = `-- name: DeleteCategory :exec
 DELETE FROM categories
 WHERE id = ? AND user_id = ?
