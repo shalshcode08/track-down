@@ -1,4 +1,4 @@
 {
-  "ignoreCommand": "git diff HEAD~1 --quiet -- apps/web/ bun.lock package.json",
+  "ignoreCommand": "npx turbo-ignore web",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
