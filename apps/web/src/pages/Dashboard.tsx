@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 import { getCategoryBreakdown, groupByDay, type Expense, type Category } from '@/data/mock'
-import { T, PRESETS, formatDay } from '@/lib/theme'
+import { T, CURRENCY, PRESETS, formatDay } from '@/lib/theme'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
 
@@ -150,9 +150,9 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-6">
         {[
-          { label: 'Total',        val: `$${total.toFixed(2)}`,        sub: 'this period' },
-          { label: 'Transactions', val: String(expenses.length),       sub: 'this period' },
-          { label: 'Daily avg',    val: `$${dailyAvg.toFixed(2)}`,     sub: 'per day' },
+          { label: 'Total',        val: `${CURRENCY}${total.toFixed(2)}`,      sub: 'this period' },
+          { label: 'Transactions', val: String(expenses.length),                 sub: 'this period' },
+          { label: 'Daily avg',    val: `${CURRENCY}${dailyAvg.toFixed(2)}`,    sub: 'per day' },
         ].map(({ label, val, sub }) => (
           <Card key={label} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, boxShadow: 'none', position: 'relative', overflow: 'hidden' }}>
             <div style={{
@@ -194,7 +194,7 @@ export default function Dashboard() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={T.borderHi} opacity={0.5} />
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: T.textDim, fontFamily: T.fontMono }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: T.textDim, fontFamily: T.fontMono }} tickFormatter={(val) => `$${val}`} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: T.textDim, fontFamily: T.fontMono }} tickFormatter={(val) => `${CURRENCY}${val}`} />
                 <Tooltip
                   contentStyle={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, fontFamily: T.fontMono, fontSize: 12 }}
                   itemStyle={{ color: T.text, fontWeight: 600 }}
@@ -228,7 +228,7 @@ export default function Dashboard() {
                         {formatDay(date)}
                       </span>
                       <span style={{ fontSize: 11, fontFamily: T.fontMono, color: T.textDim, marginLeft: 8 }}>
-                        ${dayExp.reduce((s, e) => s + e.amount, 0).toFixed(2)}
+                        {CURRENCY}{dayExp.reduce((s, e) => s + e.amount, 0).toFixed(2)}
                       </span>
                     </div>
                     {dayExp.map((exp, i) => (
@@ -257,7 +257,7 @@ export default function Dashboard() {
                           </div>
                           <div style={{ textAlign: 'right' }}>
                             <p style={{ fontFamily: T.fontMono, fontSize: 14, fontWeight: 500, color: T.text }}>
-                              ${exp.amount.toFixed(2)}
+                              {CURRENCY}{exp.amount.toFixed(2)}
                             </p>
                             <p style={{ fontSize: 11, color: T.textDim, fontFamily: T.fontMono }}>
                               {format(new Date(exp.created_at), 'h:mm a')}
@@ -304,7 +304,7 @@ export default function Dashboard() {
                         <Tooltip
                           contentStyle={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, fontFamily: T.fontMono, fontSize: 12 }}
                           itemStyle={{ color: T.text, fontWeight: 600 }}
-                          formatter={(val: unknown) => `$${Number(val).toFixed(2)}`}
+                          formatter={(val: unknown) => `${CURRENCY}${Number(val).toFixed(2)}`}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -322,7 +322,7 @@ export default function Dashboard() {
                           </div>
                           <div style={{ textAlign: 'right' }}>
                             <p style={{ fontSize: 13, fontFamily: T.fontMono, fontWeight: 500, color: T.text }}>
-                              ${cat.total.toFixed(2)}
+                              {CURRENCY}{cat.total.toFixed(2)}
                             </p>
                             <p style={{ fontSize: 11, fontFamily: T.fontMono, color: T.textDim }}>
                               {cat.pct.toFixed(0)}%
@@ -357,7 +357,7 @@ export default function Dashboard() {
               <div style={{ textAlign: 'center', padding: '32px 0', background: T.bg, borderRadius: 12, border: `1px solid ${T.border}` }}>
                 <span style={{ fontSize: 48 }}>{selectedExpense.category_emoji}</span>
                 <p style={{ fontFamily: T.fontMono, fontSize: 36, fontWeight: 600, color: T.text, marginTop: 8 }}>
-                  ${selectedExpense.amount.toFixed(2)}
+                  {CURRENCY}{selectedExpense.amount.toFixed(2)}
                 </p>
                 <p style={{ fontSize: 13, color: T.textMid, fontFamily: T.font, marginTop: 4 }}>
                   {selectedExpense.category_name}

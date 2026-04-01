@@ -1,5 +1,7 @@
 import { format, isToday, isYesterday } from 'date-fns'
 
+export const CURRENCY = '₹'
+
 export const T = {
   bg:       '#09090b',
   surface:  '#18181b',

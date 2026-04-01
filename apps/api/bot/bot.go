@@ -155,7 +155,7 @@ func handleText(c telebot.Context) error {
 		InlineKeyboard: rows,
 	}
 
-	return c.Send(fmt.Sprintf("💸 *$%.2f* — which category?", amount), &telebot.SendOptions{
+	return c.Send(fmt.Sprintf("💸 *₹%.2f* — which category?", amount), &telebot.SendOptions{
 		ParseMode:   "Markdown",
 		ReplyMarkup: markup,
 	})
@@ -201,13 +201,13 @@ func handleCallback(c telebot.Context) error {
 		return c.Respond(&telebot.CallbackResponse{Text: "Error finding category.", ShowAlert: true})
 	}
 
-	edited := fmt.Sprintf("✅ *$%.2f* logged under %s %s", amount, cat.Emoji, cat.Name)
+	edited := fmt.Sprintf("✅ *₹%.2f* logged under %s %s", amount, cat.Emoji, cat.Name)
 	_, err = Bot.Edit(callback.Message, edited, &telebot.SendOptions{ParseMode: "Markdown"})
 	if err != nil {
 		log.Printf("Failed to edit message: %v", err)
 	}
 
-	return c.Respond(&telebot.CallbackResponse{Text: fmt.Sprintf("$%.2f saved to %s %s", amount, cat.Emoji, cat.Name)})
+	return c.Respond(&telebot.CallbackResponse{Text: fmt.Sprintf("₹%.2f saved to %s %s", amount, cat.Emoji, cat.Name)})
 }
 
 func ensureUser(sender *telebot.User) db.User {
@@ -283,7 +283,7 @@ func handleToday(c telebot.Context) error {
 	}
 
 	today := time.Now().Format("Mon, Jan 2")
-	msg := fmt.Sprintf("📊 *Today's spending* (%s)\n\n*$%.2f*", today, total.(float64))
+	msg := fmt.Sprintf("📊 *Today's spending* (%s)\n\n*₹%.2f*", today, total.(float64))
 	return c.Send(msg, &telebot.SendOptions{ParseMode: "Markdown"})
 }
 
@@ -307,7 +307,7 @@ func handleMonth(c telebot.Context) error {
 	}
 
 	monthName := now.Format("January 2006")
-	msg := fmt.Sprintf("🗓️ *%s spending*\n\n*$%.2f*", monthName, total.(float64))
+	msg := fmt.Sprintf("🗓️ *%s spending*\n\n*₹%.2f*", monthName, total.(float64))
 	return c.Send(msg, &telebot.SendOptions{ParseMode: "Markdown"})
 }
 
