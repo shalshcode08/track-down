@@ -156,7 +156,10 @@ func handleText(c telebot.Context) error {
 		InlineKeyboard: rows,
 	}
 
-	return c.Send(fmt.Sprintf("💸 *$%.2f* — which category?", amount), markup, &telebot.SendOptions{ParseMode: "Markdown"})
+	return c.Send(fmt.Sprintf("💸 *$%.2f* — which category?", amount), &telebot.SendOptions{
+		ParseMode:   "Markdown",
+		ReplyMarkup: markup,
+	})
 }
 
 func handleCallback(c telebot.Context) error {
