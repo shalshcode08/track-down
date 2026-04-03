@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <radialGradient id="bgGlow" cx="30%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="rightGlow" cx="75%" cy="45%" r="40%">
+      <stop offset="0%" stop-color="#3f3f46" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#3f3f46" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+    <linearGradient id="cardBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3f3f46"/>
+      <stop offset="100%" stop-color="#27272a"/>
+    </linearGradient>
+    <linearGradient id="accentLine" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#fafafa"/>
+      <stop offset="100%" stop-color="#fafafa" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#09090b"/>
+
+  <!-- Subtle dot grid -->
+  <g fill="#ffffff" fill-opacity="0.025">
+    <circle cx="80" cy="80" r="1"/><circle cx="160" cy="80" r="1"/><circle cx="240" cy="80" r="1"/><circle cx="320" cy="80" r="1"/><circle cx="400" cy="80" r="1"/><circle cx="480" cy="80" r="1"/><circle cx="560" cy="80" r="1"/><circle cx="640" cy="80" r="1"/><circle cx="720" cy="80" r="1"/><circle cx="800" cy="80" r="1"/><circle cx="880" cy="80" r="1"/><circle cx="960" cy="80" r="1"/><circle cx="1040" cy="80" r="1"/><circle cx="1120" cy="80" r="1"/>
+    <circle cx="80" cy="160" r="1"/><circle cx="160" cy="160" r="1"/><circle cx="240" cy="160" r="1"/><circle cx="320" cy="160" r="1"/><circle cx="400" cy="160" r="1"/><circle cx="480" cy="160" r="1"/><circle cx="560" cy="160" r="1"/><circle cx="640" cy="160" r="1"/><circle cx="720" cy="160" r="1"/><circle cx="800" cy="160" r="1"/><circle cx="880" cy="160" r="1"/><circle cx="960" cy="160" r="1"/><circle cx="1040" cy="160" r="1"/><circle cx="1120" cy="160" r="1"/>
+    <circle cx="80" cy="240" r="1"/><circle cx="160" cy="240" r="1"/><circle cx="240" cy="240" r="1"/><circle cx="320" cy="240" r="1"/><circle cx="400" cy="240" r="1"/><circle cx="480" cy="240" r="1"/><circle cx="560" cy="240" r="1"/><circle cx="640" cy="240" r="1"/><circle cx="720" cy="240" r="1"/><circle cx="800" cy="240" r="1"/><circle cx="880" cy="240" r="1"/><circle cx="960" cy="240" r="1"/><circle cx="1040" cy="240" r="1"/><circle cx="1120" cy="240" r="1"/>
+    <circle cx="80" cy="320" r="1"/><circle cx="160" cy="320" r="1"/><circle cx="240" cy="320" r="1"/><circle cx="320" cy="320" r="1"/><circle cx="400" cy="320" r="1"/><circle cx="480" cy="320" r="1"/><circle cx="560" cy="320" r="1"/><circle cx="640" cy="320" r="1"/><circle cx="720" cy="320" r="1"/><circle cx="800" cy="320" r="1"/><circle cx="880" cy="320" r="1"/><circle cx="960" cy="320" r="1"/><circle cx="1040" cy="320" r="1"/><circle cx="1120" cy="320" r="1"/>
+    <circle cx="80" cy="400" r="1"/><circle cx="160" cy="400" r="1"/><circle cx="240" cy="400" r="1"/><circle cx="320" cy="400" r="1"/><circle cx="400" cy="400" r="1"/><circle cx="480" cy="400" r="1"/><circle cx="560" cy="400" r="1"/><circle cx="640" cy="400" r="1"/><circle cx="720" cy="400" r="1"/><circle cx="800" cy="400" r="1"/><circle cx="880" cy="400" r="1"/><circle cx="960" cy="400" r="1"/><circle cx="1040" cy="400" r="1"/><circle cx="1120" cy="400" r="1"/>
+    <circle cx="80" cy="480" r="1"/><circle cx="160" cy="480" r="1"/><circle cx="240" cy="480" r="1"/><circle cx="320" cy="480" r="1"/><circle cx="400" cy="480" r="1"/><circle cx="480" cy="480" r="1"/><circle cx="560" cy="480" r="1"/><circle cx="640" cy="480" r="1"/><circle cx="720" cy="480" r="1"/><circle cx="800" cy="480" r="1"/><circle cx="880" cy="480" r="1"/><circle cx="960" cy="480" r="1"/><circle cx="1040" cy="480" r="1"/><circle cx="1120" cy="480" r="1"/>
+    <circle cx="80" cy="560" r="1"/><circle cx="160" cy="560" r="1"/><circle cx="240" cy="560" r="1"/><circle cx="320" cy="560" r="1"/><circle cx="400" cy="560" r="1"/><circle cx="480" cy="560" r="1"/><circle cx="560" cy="560" r="1"/><circle cx="640" cy="560" r="1"/><circle cx="720" cy="560" r="1"/><circle cx="800" cy="560" r="1"/><circle cx="880" cy="560" r="1"/><circle cx="960" cy="560" r="1"/><circle cx="1040" cy="560" r="1"/><circle cx="1120" cy="560" r="1"/>
+  </g>
+
+  <!-- Left glow -->
+  <rect width="1200" height="630" fill="url(#bgGlow)"/>
+  <!-- Right glow -->
+  <rect width="1200" height="630" fill="url(#rightGlow)"/>
+
+  <!-- ─── LEFT COLUMN ─────────────────────────────────────────── -->
+
+  <!-- Logo mark -->
+  <rect x="72" y="72" width="52" height="52" rx="14" fill="#18181b" stroke="#3f3f46" stroke-width="1.5"/>
+  <g transform="translate(84, 84)" fill="none" stroke="#fafafa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M27 10V5.5a1.5 1.5 0 0 0-1.5-1.5H7A3 3 0 1 0 7 10h21a1.5 1.5 0 0 1 1.5 1.5V17h-4.5a3 3 0 1 0 0 6H29.5a1.5 1.5 0 0 0 1.5-1.5V11.5"/>
+    <path d="M4 5v20a3 3 0 0 0 3 3h21a1.5 1.5 0 0 0 1.5-1.5V17"/>
+  </g>
+
+  <!-- Accent line -->
+  <rect x="72" y="152" width="80" height="2" rx="1" fill="url(#accentLine)"/>
+
+  <!-- Wordmark -->
+  <text x="72" y="250" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" font-weight="800" font-size="96" fill="#fafafa" letter-spacing="-5">Track</text>
+  <text x="72" y="348" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" font-weight="800" font-size="96" fill="#fafafa" letter-spacing="-5" opacity="0.4">Down</text>
+
+  <!-- Tagline -->
+  <text x="72" y="404" font-family="'Courier New', 'SF Mono', monospace" font-size="17" fill="#71717a" letter-spacing="0.5">Log expenses via Telegram.</text>
+  <text x="72" y="428" font-family="'Courier New', 'SF Mono', monospace" font-size="17" fill="#71717a" letter-spacing="0.5">Review them here.</text>
+
+  <!-- Feature pills -->
+  <rect x="72" y="462" width="168" height="28" rx="14" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+  <text x="156" y="480" font-family="'Courier New', monospace" font-size="12" fill="#a1a1aa" text-anchor="middle">Telegram Bot</text>
+
+  <rect x="252" y="462" width="148" height="28" rx="14" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+  <text x="326" y="480" font-family="'Courier New', monospace" font-size="12" fill="#a1a1aa" text-anchor="middle">Analytics</text>
+
+  <rect x="72" y="502" width="178" height="28" rx="14" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+  <text x="161" y="520" font-family="'Courier New', monospace" font-size="12" fill="#a1a1aa" text-anchor="middle">Free · Open Source</text>
+
+  <!-- Divider -->
+  <line x1="620" y1="50" x2="620" y2="580" stroke="#27272a" stroke-width="1"/>
+
+  <!-- ─── RIGHT COLUMN ─────────────────────────────────────────── -->
+
+  <!-- Section label -->
+  <text x="680" y="96" font-family="'Courier New', monospace" font-size="11" fill="#3f3f46" letter-spacing="3">RECENT EXPENSES</text>
+
+  <!-- Card 1 -->
+  <rect x="660" y="114" width="460" height="70" rx="12" fill="#18181b" stroke="url(#cardBorder)" stroke-width="1" filter="url(#cardShadow)"/>
+  <text x="696" y="148" font-size="28">🍔</text>
+  <text x="736" y="141" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-size="14" font-weight="600" fill="#fafafa">Food</text>
+  <text x="736" y="160" font-family="'Courier New', monospace" font-size="11" fill="#71717a">Today, 1:30 PM · Lunch</text>
+  <text x="1092" y="152" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-size="18" font-weight="700" fill="#fafafa" text-anchor="end">₹ 250</text>
+
+  <!-- Card 2 -->
+  <rect x="660" y="200" width="460" height="70" rx="12" fill="#18181b" stroke="url(#cardBorder)" stroke-width="1" filter="url(#cardShadow)"/>
+  <text x="696" y="234" font-size="28">🚗</text>
+  <text x="736" y="227" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-size="14" font-weight="600" fill="#fafafa">Transport</text>
+  <text x="736" y="246" font-family="'Courier New', monospace" font-size="11" fill="#71717a">Today, 9:15 AM · Cab</text>
+  <text x="1092" y="238" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-size="18" font-weight="700" fill="#fafafa" text-anchor="end">₹ 120</text>
+
+  <!-- Card 3 -->
+  <rect x="660" y="286" width="460" height="70" rx="12" fill="#18181b" stroke="url(#cardBorder)" stroke-width="1" filter="url(#cardShadow)"/>
+  <text x="696" y="320" font-size="28">🛒</text>
+  <text x="736" y="313" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-size="14" font-weight="600" fill="#fafafa">Shopping</text>
+  <text x="736" y="332" font-family="'Courier New', monospace" font-size="11" fill="#71717a">Yesterday · Groceries</text>
+  <text x="1092" y="324" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-size="18" font-weight="700" fill="#fafafa" text-anchor="end">₹ 890</text>
+
+  <!-- Card 4 (slightly faded) -->
+  <rect x="660" y="372" width="460" height="70" rx="12" fill="#18181b" stroke="#27272a" stroke-width="1" opacity="0.6"/>
+  <text x="696" y="406" font-size="28" opacity="0.6">☕</text>
+  <text x="736" y="399" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-size="14" font-weight="600" fill="#fafafa" opacity="0.6">Coffee</text>
+  <text x="736" y="418" font-family="'Courier New', monospace" font-size="11" fill="#71717a" opacity="0.6">Yesterday · Café</text>
+  <text x="1092" y="410" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-size="18" font-weight="700" fill="#fafafa" opacity="0.6" text-anchor="end">₹ 80</text>
+
+  <!-- Total row -->
+  <line x1="660" y1="462" x2="1120" y2="462" stroke="#27272a" stroke-width="1"/>
+  <text x="736" y="490" font-family="'Courier New', monospace" font-size="13" fill="#71717a">Total · Today</text>
+  <text x="1092" y="490" font-family="-apple-system, BlinkMacSystemFont, system-ui, sans-serif" font-size="22" font-weight="800" fill="#fafafa" text-anchor="end">₹ 1,340</text>
+
+  <!-- ─── FOOTER ─────────────────────────────────────────────── -->
+  <line x1="0" y1="578" x2="1200" y2="578" stroke="#27272a" stroke-width="1"/>
+
+  <!-- Telegram badge -->
+  <rect x="72" y="594" width="130" height="24" rx="12" fill="#18181b" stroke="#27272a" stroke-width="1"/>
+  <text x="137" y="610" font-family="'Courier New', monospace" font-size="11" fill="#52525b" text-anchor="middle">via Telegram</text>
+
+  <!-- URL -->
+  <text x="1128" y="610" font-family="'Courier New', monospace" font-size="13" font-weight="600" fill="#3f3f46" text-anchor="end" letter-spacing="0.5">trackdown.space</text>
+</svg>

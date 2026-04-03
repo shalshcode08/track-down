@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Wallet, ArrowRight } from 'lucide-react'
@@ -34,6 +35,19 @@ export default function LoginPage() {
   if (isLoading) return null
 
   return (
+    <>
+    <Helmet>
+      <title>Sign In — TrackDown</title>
+      <meta name="description" content="Sign in to TrackDown using your Telegram bot code. Open @Trackdownsomubot, send /login, and paste the 6-digit code to access your expense dashboard." />
+      <meta name="robots" content="index, follow" />
+      <link rel="canonical" href="https://trackdown.space/login" />
+      <meta property="og:title" content="Sign In — TrackDown" />
+      <meta property="og:description" content="Sign in to TrackDown using your Telegram bot code. Secure, instant authentication via Telegram." />
+      <meta property="og:url" content="https://trackdown.space/login" />
+      <meta property="og:image" content="https://trackdown.space/og-image.svg" />
+      <meta name="twitter:title" content="Sign In — TrackDown" />
+      <meta name="twitter:description" content="Sign in to TrackDown using your Telegram bot code. Secure, instant authentication via Telegram." />
+    </Helmet>
     <div className="min-h-screen grid grid-cols-1 md:grid-cols-2" style={{ fontFamily: T.font }}>
       <div className="p-8 py-12 md:p-14 relative overflow-hidden flex flex-col items-start justify-center" style={{
         background: T.bg,
@@ -140,5 +154,6 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+    </>
   )
 }

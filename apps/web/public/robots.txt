@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /
+Allow: /login
+
+# Disallow authenticated pages (no value to crawl, require login)
+Disallow: /categories
+
+# Block AI training crawlers
+User-agent: GPTBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+Sitemap: https://trackdown.space/sitemap.xml

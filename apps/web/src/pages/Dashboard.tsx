@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async'
 import { useState } from 'react'
 import { format, startOfWeek, startOfMonth, subDays, addDays, differenceInDays, getDaysInMonth } from 'date-fns'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -218,6 +219,12 @@ export default function Dashboard() {
   const COLORS = [T.text, '#e4e4e7', '#a1a1aa', '#71717a', '#3f3f46', '#27272a']
 
   return (
+    <>
+    <Helmet>
+      <title>Dashboard — TrackDown</title>
+      <meta name="description" content="View and manage your expenses on TrackDown. Filter by date range, track spending by category, and analyse your financial habits." />
+      <meta name="robots" content="noindex, nofollow" />
+    </Helmet>
     <div className="max-w-[900px] mx-auto px-4 sm:px-6 py-6 sm:py-9" style={{ fontFamily: T.font }}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7">
         <div>
@@ -614,5 +621,6 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
     </div>
+    </>
   )
 }

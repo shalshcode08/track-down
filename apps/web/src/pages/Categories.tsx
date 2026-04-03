@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, Pencil } from 'lucide-react'
@@ -90,6 +91,12 @@ export default function CategoriesPage() {
   const isPending = addMut.isPending || editMut.isPending
 
   return (
+    <>
+    <Helmet>
+      <title>Categories — TrackDown</title>
+      <meta name="description" content="Manage your expense categories on TrackDown. Create, edit, and organise spending categories with custom names and emojis." />
+      <meta name="robots" content="noindex, nofollow" />
+    </Helmet>
     <div className="max-w-[900px] mx-auto px-4 sm:px-6 py-6 sm:py-9" style={{ fontFamily: T.font }}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7">
         <div>
@@ -215,5 +222,6 @@ export default function CategoriesPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </>
   )
 }
