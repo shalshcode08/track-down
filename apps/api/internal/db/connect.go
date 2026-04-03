@@ -4,11 +4,11 @@ import (
 	"database/sql"
 	"log"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
 func Open(path string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", path)
+	db, err := sql.Open("libsql", path)
 	if err != nil {
 		return nil, err
 	}

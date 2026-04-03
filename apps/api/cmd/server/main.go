@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -61,16 +60,9 @@ func main() {
 		log.Println("No .env file found, using environment variables")
 	}
 
-	dbPath := os.Getenv("DB_PATH")
+	dbPath := os.Getenv("DATABASE_URL")
 	if dbPath == "" {
-		dbPath = "./track-down.db"
-	}
-
-	// Ensure the parent directory exists (important when using a mounted volume).
-	if dir := filepath.Dir(dbPath); dir != "." {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			log.Fatalf("Failed to create database directory %s: %v", dir, err)
-		}
+		dbPath = "file:./track-down.db"
 	}
 
 	database, err := db.Open(dbPath)
