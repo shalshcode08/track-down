@@ -3,17 +3,19 @@ import { format, isToday, isYesterday } from 'date-fns'
 export const CURRENCY = '₹'
 
 export const T = {
-  bg:       '#09090b',
-  surface:  '#18181b',
-  border:   '#27272a',
-  borderHi: '#3f3f46',
-  text:     '#fafafa',
-  textMid:  '#a1a1aa',
-  textDim:  '#71717a',
-  accent:   '#ffffff',
-  red:      '#ef4444',
-  font:     `'Bricolage Grotesque', system-ui, sans-serif`,
-  fontMono: `'JetBrains Mono', monospace`,
+  bg:        '#09090b',
+  surface:   '#18181b',
+  border:    '#27272a',
+  borderHi:  '#3f3f46',
+  text:      '#fafafa',
+  textMid:   '#a1a1aa',
+  textDim:   '#71717a',
+  accent:    '#818cf8',
+  accentDim: 'rgba(129, 140, 248, 0.12)',
+  accentBorder: 'rgba(129, 140, 248, 0.25)',
+  red:       '#ef4444',
+  font:      `'Bricolage Grotesque', system-ui, sans-serif`,
+  fontMono:  `'JetBrains Mono', monospace`,
 }
 
 export const PRESETS = ['Today', 'This Week', 'This Month', 'Last 30 Days']

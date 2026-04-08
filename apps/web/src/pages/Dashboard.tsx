@@ -216,7 +216,7 @@ export default function Dashboard() {
     .reverse()
 
   const donutData = breakdown.map(c => ({ name: c.name, value: c.total }))
-  const COLORS = [T.text, '#e4e4e7', '#a1a1aa', '#71717a', '#3f3f46', '#27272a']
+  const COLORS = ['#818cf8', '#34d399', '#f59e0b', '#f87171', '#60a5fa', '#c084fc']
 
   return (
     <>
@@ -240,17 +240,19 @@ export default function Dashboard() {
             <button key={p} onClick={() => setPreset(p)} style={{
               padding: '5px 12px', borderRadius: 8, fontSize: 12,
               fontFamily: T.font, fontWeight: 500, cursor: 'pointer',
-              background: preset === p ? T.text : 'transparent',
-              color: preset === p ? T.bg : T.textMid,
-              border: preset === p ? 'none' : `1px solid ${T.border}`,
+              background: preset === p ? T.accentDim : 'transparent',
+              color: preset === p ? T.accent : T.textMid,
+              border: `1px solid ${preset === p ? T.accentBorder : T.border}`,
               transition: 'all 0.15s',
             }}>
               {p}
             </button>
           ))}
           <Button onClick={() => setAddOpen(true)} style={{
-            background: T.text, color: T.bg, fontFamily: T.font, fontSize: 12,
-            height: 30, borderRadius: 8, gap: 4, paddingLeft: 10, paddingRight: 12,
+            background: T.accent, color: '#1e1b4b', fontFamily: T.font, fontSize: 12,
+            fontWeight: 600, height: 30, borderRadius: 8, gap: 4,
+            paddingLeft: 10, paddingRight: 12,
+            boxShadow: `0 0 14px rgba(129, 140, 248, 0.35)`,
           }}>
             <Plus size={12} /> Add
           </Button>
@@ -278,7 +280,7 @@ export default function Dashboard() {
           <Card key={label} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, boxShadow: 'none', position: 'relative', overflow: 'hidden' }}>
             <div style={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-              background: `radial-gradient(circle at top right, #ffffff08 0%, transparent 70%)`,
+              background: `radial-gradient(circle at top right, rgba(129, 140, 248, 0.07) 0%, transparent 70%)`,
               pointerEvents: 'none',
             }} />
             <CardContent style={{ padding: '20px 24px', position: 'relative', zIndex: 1 }}>
@@ -311,18 +313,18 @@ export default function Dashboard() {
             <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={T.text} stopOpacity={0.2}/>
-                  <stop offset="95%" stopColor={T.text} stopOpacity={0}/>
+                  <stop offset="5%" stopColor={T.accent} stopOpacity={0.25}/>
+                  <stop offset="95%" stopColor={T.accent} stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={T.borderHi} opacity={0.5} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={T.borderHi} opacity={0.4} />
               <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: T.textDim, fontFamily: T.fontMono }} dy={10} />
               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: T.textDim, fontFamily: T.fontMono }} tickFormatter={(val) => `${CURRENCY}${val}`} />
               <Tooltip
-                contentStyle={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, fontFamily: T.fontMono, fontSize: 12 }}
-                itemStyle={{ color: T.text, fontWeight: 600 }}
+                contentStyle={{ background: T.surface, border: `1px solid ${T.accentBorder}`, borderRadius: 8, fontFamily: T.fontMono, fontSize: 12 }}
+                itemStyle={{ color: T.accent, fontWeight: 600 }}
               />
-              <Area type="monotone" dataKey="amount" stroke={T.text} strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)" />
+              <Area type="monotone" dataKey="amount" stroke={T.accent} strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)" />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
@@ -439,8 +441,8 @@ export default function Dashboard() {
                           ))}
                         </Pie>
                         <Tooltip
-                          contentStyle={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, fontFamily: T.fontMono, fontSize: 12 }}
-                          itemStyle={{ color: T.text, fontWeight: 600 }}
+                          contentStyle={{ background: T.surface, border: `1px solid ${T.accentBorder}`, borderRadius: 8, fontFamily: T.fontMono, fontSize: 12 }}
+                          itemStyle={{ color: T.accent, fontWeight: 600 }}
                           formatter={(val: unknown) => `${CURRENCY}${Number(val).toFixed(2)}`}
                         />
                       </PieChart>
@@ -466,8 +468,8 @@ export default function Dashboard() {
                             </p>
                           </div>
                         </div>
-                        <div style={{ height: 1, background: T.border, borderRadius: 999, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', background: T.text, width: `${cat.pct}%`, transition: 'width 0.8s ease' }} />
+                        <div style={{ height: 2, background: T.border, borderRadius: 999, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', background: COLORS[i % COLORS.length], width: `${cat.pct}%`, transition: 'width 0.8s ease', opacity: 0.8 }} />
                         </div>
                         {i < breakdown.length - 1 && <div style={{ height: 0 }} />}
                       </div>

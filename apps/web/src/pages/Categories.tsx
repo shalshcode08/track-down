@@ -104,7 +104,9 @@ export default function CategoriesPage() {
           <p style={{ fontSize: 13, color: T.textMid, marginTop: 2 }}>Used by your Telegram bot to log expenses.</p>
         </div>
         <Button onClick={openAdd} className="w-full sm:w-auto" style={{
-          background: T.text, color: T.bg, fontFamily: T.font, fontSize: 13, gap: 6, height: 36, borderRadius: 9,
+          background: T.accent, color: '#1e1b4b', fontFamily: T.font, fontWeight: 600,
+          fontSize: 13, gap: 6, height: 36, borderRadius: 9,
+          boxShadow: `0 0 14px rgba(129, 140, 248, 0.3)`,
         }}>
           <Plus size={14} /> Add Category
         </Button>

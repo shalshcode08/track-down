@@ -62,12 +62,12 @@ export default function LoginPage() {
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div style={{
             width: 44, height: 44, borderRadius: 12,
-            border: `1px solid ${T.borderHi}`,
-            background: T.surface,
+            background: T.accent,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             marginBottom: 28,
+            boxShadow: `0 0 20px rgba(129, 140, 248, 0.4)`,
           }}>
-            <Wallet size={22} color={T.text} strokeWidth={2} />
+            <Wallet size={22} color="#1e1b4b" strokeWidth={2.5} />
           </div>
           <h1 style={{ fontFamily: T.font, fontWeight: 800, fontSize: 40, color: T.text, letterSpacing: '-0.05em', lineHeight: 1, marginBottom: 12 }}>
             Track<br />Down
@@ -127,23 +127,23 @@ export default function LoginPage() {
             disabled={loginMut.isPending}
             placeholder="_ _ _ _ _ _"
             style={{
-              background: T.bg, border: `1px solid ${canSubmit ? T.text : T.border}`,
+              background: T.bg, border: `1px solid ${canSubmit ? T.accent : T.border}`,
               color: T.text, fontFamily: T.fontMono, fontSize: 26,
               textAlign: 'center', letterSpacing: '0.4em',
               height: 58, borderRadius: 10, marginBottom: 10,
-              transition: 'border-color 0.2s', boxShadow: canSubmit ? `0 0 0 1px ${T.text}` : 'none',
+              transition: 'border-color 0.2s', boxShadow: canSubmit ? `0 0 0 1px ${T.accent}, 0 0 16px rgba(129,140,248,0.2)` : 'none',
             }}
           />
 
           <Button onClick={handleLogin} disabled={!canSubmit || loginMut.isPending} style={{
             width: '100%', height: 44,
-            background: canSubmit ? T.text : T.bg,
-            color: canSubmit ? T.bg : T.textDim,
+            background: canSubmit ? T.accent : T.bg,
+            color: canSubmit ? '#1e1b4b' : T.textDim,
             fontFamily: T.fontMono, fontWeight: 700, fontSize: 13,
-            border: `1px solid ${canSubmit ? T.text : T.border}`,
+            border: `1px solid ${canSubmit ? T.accent : T.border}`,
             borderRadius: 10, transition: 'all 0.2s',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            boxShadow: canSubmit ? `0 0 20px ${T.text}30` : 'none',
+            boxShadow: canSubmit ? `0 0 20px rgba(129, 140, 248, 0.4)` : 'none',
           }}>
             {loginMut.isPending ? 'verifying...' : 'authenticate'} <ArrowRight size={15} />
           </Button>
